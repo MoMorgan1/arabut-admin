@@ -10,8 +10,11 @@ export interface OrderFilters {
 
 export const DEFAULT_FILTERS: OrderFilters = {
   search: "",
-  status: "all",
+  status: "active",
   itemType: "all",
   dateFrom: "",
   dateTo: "",
 };
+
+// Terminal statuses — orders with ALL items in these statuses are considered "done"
+export const TERMINAL_STATUSES = ["completed", "completed_comp", "cancelled", "refunded"];

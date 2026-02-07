@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -27,7 +27,6 @@ import StatusTimeline from "./StatusTimeline";
 import {
   updateOrderItemStatus,
   updateOrderAction,
-  syncFTStatusAction,
   updateOrderItemAction,
 } from "@/app/(dashboard)/orders/actions";
 import {
@@ -49,12 +48,15 @@ import { toast } from "sonner";
 import {
   Loader2,
   Pencil,
-  RefreshCw,
   DollarSign,
   User,
   Phone,
   CreditCard,
+  Radio,
 } from "lucide-react";
+
+const TERMINAL_STATUSES = ["completed", "completed_comp", "cancelled", "refunded"];
+const POLL_INTERVAL_MS = 5000; // 5 seconds
 
 export interface OrderDetailData extends Order {
   order_items: (OrderItem & { status_log: OrderStatusLog[] })[];
@@ -72,6 +74,80 @@ export default function OrderDetail({
   globalExchangeRate = 3.75,
 }: OrderDetailProps) {
   const exchangeRate = globalExchangeRate;
+  const router = useRouter();
+
+  // Check if any items are FT-linked and not in terminal status
+  const hasFTItems = order.order_items.some((item) => item.ft_order_id);
+  const allTerminal = order.order_items.every((item) =>
+    TERMINAL_STATUSES.includes(item.status)
+  );
+  const shouldPoll = hasFTItems && !allTerminal;
+
+  const [polling, setPolling] = useState(shouldPoll);
+  const [lastSync, setLastSync] = useState<string | null>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const syncOrder = useCallback(async () => {
+    try {
+      const res = await fetch("/api/sync-ft", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderId: order.id }),
+      });
+
+      if (!res.ok) return;
+
+      const data = await res.json();
+      if (data.synced > 0) {
+        setLastSync(new Date().toLocaleTimeString());
+        // Check if any status actually changed
+        const anyChanged = data.results?.some(
+          (r: { statusChanged: boolean }) => r.statusChanged
+        );
+        if (anyChanged) {
+          router.refresh();
+        }
+      }
+
+      // Stop polling if all items are now terminal
+      const allDone = data.results?.every(
+        (r: { newStatus: string }) => TERMINAL_STATUSES.includes(r.newStatus)
+      );
+      if (allDone && data.synced > 0) {
+        setPolling(false);
+        router.refresh();
+      }
+    } catch {
+      // Silently ignore poll errors to avoid spamming
+    }
+  }, [order.id, router]);
+
+  useEffect(() => {
+    if (!polling) {
+      if (pollRef.current) {
+        clearInterval(pollRef.current);
+        pollRef.current = null;
+      }
+      return;
+    }
+
+    // Run immediately on mount, then every POLL_INTERVAL_MS
+    syncOrder();
+    pollRef.current = setInterval(syncOrder, POLL_INTERVAL_MS);
+
+    return () => {
+      if (pollRef.current) {
+        clearInterval(pollRef.current);
+        pollRef.current = null;
+      }
+    };
+  }, [polling, syncOrder]);
+
+  // Update polling state when order data changes (e.g. after router.refresh)
+  useEffect(() => {
+    const stillActive = hasFTItems && !allTerminal;
+    setPolling(stillActive);
+  }, [hasFTItems, allTerminal]);
 
   return (
     <div className="space-y-6">
@@ -80,9 +156,26 @@ export default function OrderDetail({
         <CardHeader>
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <CardTitle className="text-xl">
-                Order #{order.salla_order_id}
-              </CardTitle>
+              <div className="flex items-center gap-3">
+                <CardTitle className="text-xl">
+                  Order #{order.salla_order_id}
+                </CardTitle>
+                {/* Live polling indicator */}
+                {polling && (
+                  <div className="flex items-center gap-1.5 text-xs text-emerald-400">
+                    <Radio className="h-3 w-3 animate-pulse" />
+                    <span>Live</span>
+                    {lastSync && (
+                      <span className="text-muted-foreground">({lastSync})</span>
+                    )}
+                  </div>
+                )}
+                {!polling && hasFTItems && allTerminal && (
+                  <Badge variant="outline" className="text-xs text-green-400 border-green-400/30">
+                    All synced
+                  </Badge>
+                )}
+              </div>
               <p className="text-sm text-muted-foreground mt-1">
                 {formatDate(order.order_date)}
               </p>
@@ -177,7 +270,6 @@ function OrderItemCard({
   suppliers: Supplier[];
 }) {
   const [updating, setUpdating] = useState(false);
-  const [syncing, setSyncing] = useState(false);
   const isCoins = item.item_type === "coins";
   const isChallenges = item.item_type === "challenges";
   const statusOptions = isCoins ? COINS_STATUSES : SERVICE_STATUSES;
@@ -194,21 +286,6 @@ function OrderItemCard({
       return;
     }
     toast.success("Status updated");
-    router.refresh();
-  }
-
-  async function handleSyncFT() {
-    setSyncing(true);
-    const result = await syncFTStatusAction(item.id);
-    setSyncing(false);
-    if (result?.error) {
-      toast.error(result.error);
-      return;
-    }
-    const msg = result.coinsDeliveredK != null
-      ? `Synced — FT: ${result.ftStatus} → ${result.newStatus} | Delivered: ${result.coinsDeliveredK}K`
-      : `Synced — FT: ${result.ftStatus} → ${result.newStatus}`;
-    toast.success(msg);
     router.refresh();
   }
 
@@ -394,23 +471,6 @@ function OrderItemCard({
 
         {/* Action buttons */}
         <div className="flex flex-wrap gap-2">
-          {item.ft_order_id && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-2"
-              onClick={handleSyncFT}
-              disabled={syncing}
-            >
-              {syncing ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <RefreshCw className="h-3.5 w-3.5" />
-              )}
-              Sync FUT Transfer
-            </Button>
-          )}
-
           <EditOrderItemDialog
             item={item}
             suppliers={suppliers}

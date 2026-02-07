@@ -57,6 +57,7 @@ export default function OrderFilters({
           <SelectValue placeholder="Status" />
         </SelectTrigger>
         <SelectContent>
+          <SelectItem value="active">Active (Not Completed)</SelectItem>
           <SelectItem value="all">All Statuses</SelectItem>
           {Object.entries(STATUS_LABELS).map(([key, label]) => (
             <SelectItem key={key} value={key}>

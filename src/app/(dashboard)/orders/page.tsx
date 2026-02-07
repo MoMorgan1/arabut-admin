@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import OrdersTable, { type OrderRowData } from "@/components/orders/OrdersTable";
 import OrderFilters from "@/components/orders/OrderFilters";
 import BulkStatusAction from "@/components/orders/BulkStatusAction";
-import { DEFAULT_FILTERS, type OrderFilters as OrderFiltersType } from "@/types/orders";
+import { DEFAULT_FILTERS, TERMINAL_STATUSES, type OrderFilters as OrderFiltersType } from "@/types/orders";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { RefreshCw, ClipboardList } from "lucide-react";
@@ -105,7 +105,14 @@ export default function OrdersPage() {
 
       let filteredOrders = (data as OrderRowData[]) ?? [];
 
-      if (filters.status !== "all") {
+      if (filters.status === "active") {
+        // Show orders where NOT all items are in a terminal status
+        filteredOrders = filteredOrders.filter((order) => {
+          const items = order.order_items ?? [];
+          if (items.length === 0) return true; // no items = still active
+          return !items.every((item) => TERMINAL_STATUSES.includes(item.status));
+        });
+      } else if (filters.status !== "all") {
         filteredOrders = filteredOrders.filter((order) =>
           order.order_items?.some((item) => item.status === filters.status)
         );
