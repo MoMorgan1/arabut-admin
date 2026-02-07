@@ -1,11 +1,11 @@
-// Formatting utilities for Arabic UI
+// Formatting utilities
 
 /**
  * Format a number as SAR currency
  */
 export function formatSAR(amount: number | null | undefined): string {
   if (amount == null) return "—";
-  return `${amount.toLocaleString("ar-SA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ر.س`;
+  return `${amount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} SAR`;
 }
 
 /**
@@ -36,12 +36,12 @@ export function formatCoins(amountK: number | null | undefined): string {
 }
 
 /**
- * Format a date string to Arabic-friendly format
+ * Format a date string
  */
 export function formatDate(dateStr: string | null | undefined): string {
   if (!dateStr) return "—";
   const date = new Date(dateStr);
-  return date.toLocaleDateString("ar-SA", {
+  return date.toLocaleDateString("en-US", {
     year: "numeric",
     month: "short",
     day: "numeric",
@@ -54,7 +54,7 @@ export function formatDate(dateStr: string | null | undefined): string {
 export function formatDateTime(dateStr: string | null | undefined): string {
   if (!dateStr) return "—";
   const date = new Date(dateStr);
-  return date.toLocaleDateString("ar-SA", {
+  return date.toLocaleDateString("en-US", {
     year: "numeric",
     month: "short",
     day: "numeric",
@@ -64,7 +64,7 @@ export function formatDateTime(dateStr: string | null | undefined): string {
 }
 
 /**
- * Format relative time (e.g., "منذ 5 دقائق")
+ * Format relative time (e.g., "5 min ago")
  */
 export function formatRelativeTime(dateStr: string): string {
   const now = new Date();
@@ -74,10 +74,10 @@ export function formatRelativeTime(dateStr: string): string {
   const diffHours = Math.floor(diffMins / 60);
   const diffDays = Math.floor(diffHours / 24);
 
-  if (diffMins < 1) return "الآن";
-  if (diffMins < 60) return `منذ ${diffMins} دقيقة`;
-  if (diffHours < 24) return `منذ ${diffHours} ساعة`;
-  if (diffDays < 30) return `منذ ${diffDays} يوم`;
+  if (diffMins < 1) return "Just now";
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  if (diffDays < 30) return `${diffDays}d ago`;
   return formatDate(dateStr);
 }
 

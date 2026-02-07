@@ -8,13 +8,9 @@ export async function createSupplierAction(params: {
   contact_info?: string;
 }) {
   const supabase = await createClient();
-
-  // Auth guard
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "غير مصرح" };
-
-  // Validate inputs
-  if (!params.name?.trim()) return { error: "اسم المورد مطلوب" };
+  if (!user) return { error: "Unauthorized" };
+  if (!params.name?.trim()) return { error: "Supplier name is required" };
 
   const { error } = await supabase.from("suppliers").insert({
     name: params.name.trim(),
@@ -32,10 +28,8 @@ export async function updateSupplierAction(
   params: { name?: string; contact_info?: string; is_active?: boolean }
 ) {
   const supabase = await createClient();
-
-  // Auth guard
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "غير مصرح" };
+  if (!user) return { error: "Unauthorized" };
 
   const { error } = await supabase
     .from("suppliers")
@@ -63,16 +57,13 @@ export async function addSupplierTransactionAction(
   }
 ) {
   const supabase = await createClient();
-
-  // Auth guard
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "غير مصرح" };
+  if (!user) return { error: "Unauthorized" };
 
-  // Validate inputs
-  if (!supplierId?.trim()) return { error: "معرّف المورد مطلوب" };
-  if (!params.amount || params.amount <= 0) return { error: "المبلغ يجب أن يكون أكبر من صفر" };
+  if (!supplierId?.trim()) return { error: "Supplier ID is required" };
+  if (!params.amount || params.amount <= 0) return { error: "Amount must be greater than zero" };
   const validTypes = ["deposit", "deduction", "refund", "adjustment"];
-  if (!validTypes.includes(params.type)) return { error: "نوع معاملة غير صالح" };
+  if (!validTypes.includes(params.type)) return { error: "Invalid transaction type" };
 
   const { data: supplier, error: fetchErr } = await supabase
     .from("suppliers")
@@ -80,7 +71,7 @@ export async function addSupplierTransactionAction(
     .eq("id", supplierId)
     .single();
 
-  if (fetchErr || !supplier) return { error: "المورد غير موجود" };
+  if (fetchErr || !supplier) return { error: "Supplier not found" };
 
   const currentBalance = supplier.balance;
   const amount = Math.abs(params.amount);
@@ -96,19 +87,16 @@ export async function addSupplierTransactionAction(
       newBalance = currentBalance - amount;
       break;
     default:
-      return { error: "نوع معاملة غير صالح" };
+      return { error: "Invalid transaction type" };
   }
 
   if (newBalance < 0) {
-    return { error: "الرصيد لا يكفي لهذه العملية" };
+    return { error: "Insufficient balance for this transaction" };
   }
 
   const { error: updateErr } = await supabase
     .from("suppliers")
-    .update({
-      balance: newBalance,
-      updated_at: new Date().toISOString(),
-    })
+    .update({ balance: newBalance, updated_at: new Date().toISOString() })
     .eq("id", supplierId);
 
   if (updateErr) return { error: updateErr.message };

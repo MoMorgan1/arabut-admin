@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 export async function markNotificationReadAction(id: string) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "غير مصرح" };
+  if (!user) return { error: "Unauthorized" };
 
   const { error } = await supabase
     .from("notifications")
@@ -22,7 +22,7 @@ export async function markNotificationReadAction(id: string) {
 export async function markAllNotificationsReadAction() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "غير مصرح" };
+  if (!user) return { error: "Unauthorized" };
 
   const { error } = await supabase
     .from("notifications")

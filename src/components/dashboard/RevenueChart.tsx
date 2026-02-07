@@ -19,7 +19,7 @@ export default function RevenueChart({ data }: RevenueChartProps) {
   if (!data.length) {
     return (
       <div className="flex h-[280px] items-center justify-center text-muted-foreground text-sm">
-        لا توجد بيانات للإيرادات المسوّاة لهذه الفترة
+        No settled revenue data for this period
       </div>
     );
   }
@@ -47,7 +47,7 @@ export default function RevenueChart({ data }: RevenueChartProps) {
           axisLine={false}
         />
         <Tooltip
-          formatter={(value: number | undefined) => [formatSAR(value ?? 0), "الإيراد"]}
+          formatter={(value: number | undefined) => [formatSAR(value ?? 0), "Revenue"]}
           labelFormatter={(_, payload) =>
             payload?.[0]?.payload?.label ?? payload?.[0]?.payload?.date
           }

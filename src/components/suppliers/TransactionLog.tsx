@@ -11,10 +11,10 @@ import { formatSAR, formatDateTime } from "@/lib/utils/formatters";
 import type { SupplierTransaction } from "@/types/database";
 
 const TYPE_LABELS: Record<string, string> = {
-  deposit: "إيداع",
-  deduction: "خصم",
-  refund: "استرجاع",
-  adjustment: "تعديل",
+  deposit: "Deposit",
+  deduction: "Deduction",
+  refund: "Refund",
+  adjustment: "Adjustment",
 };
 
 const TYPE_VARIANT: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
@@ -31,7 +31,7 @@ interface TransactionLogProps {
 export default function TransactionLog({ transactions }: TransactionLogProps) {
   if (!transactions.length) {
     return (
-      <p className="text-sm text-muted-foreground py-4">لا توجد معاملات</p>
+      <p className="text-sm text-muted-foreground py-4">No transactions</p>
     );
   }
 
@@ -40,11 +40,11 @@ export default function TransactionLog({ transactions }: TransactionLogProps) {
       <Table>
         <TableHeader>
           <TableRow className="bg-muted/50">
-            <TableHead className="text-right">النوع</TableHead>
-            <TableHead className="text-right">المبلغ</TableHead>
-            <TableHead className="text-right">الرصيد بعد</TableHead>
-            <TableHead className="text-right">ملاحظة</TableHead>
-            <TableHead className="text-right">التاريخ</TableHead>
+            <TableHead>Type</TableHead>
+            <TableHead>Amount</TableHead>
+            <TableHead>Balance After</TableHead>
+            <TableHead>Note</TableHead>
+            <TableHead>Date</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>

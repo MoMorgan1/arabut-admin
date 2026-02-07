@@ -17,6 +17,7 @@ export default function OrdersPage() {
   const [filters, setFilters] = useState<OrderFiltersType>(DEFAULT_FILTERS);
   const [selectedOrderIds, setSelectedOrderIds] = useState<Set<string>>(new Set());
   const [bulkActionOpen, setBulkActionOpen] = useState(false);
+  const [roleError, setRoleError] = useState<string | null>(null);
   const supabase = createClient();
 
   function handleSelectionChange(id: string, checked: boolean) {
@@ -35,23 +36,57 @@ export default function OrdersPage() {
 
   const fetchOrders = useCallback(async () => {
     setLoading(true);
+    setRoleError(null);
 
     try {
-      // Build query
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setRoleError("Not signed in. Please log in first.");
+        setOrders([]);
+        setLoading(false);
+        return;
+      }
+
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .single();
+
+      if (!profile) {
+        setRoleError(
+          "Your account is not linked to a profile in the database. " +
+          "Make sure you ran supabase-schema.sql in the SQL Editor, " +
+          "or run:\n" +
+          `INSERT INTO profiles (id, full_name, role) VALUES ('${user.id}', '${user.email}', 'admin');`
+        );
+        setOrders([]);
+        setLoading(false);
+        return;
+      }
+
+      if (!["admin", "employee"].includes(profile.role)) {
+        setRoleError(
+          `Your account role is "${profile.role}" — needs to be admin or employee to view orders. ` +
+          `Run in SQL Editor:\nUPDATE profiles SET role = 'admin' WHERE id = '${user.id}';`
+        );
+        setOrders([]);
+        setLoading(false);
+        return;
+      }
+
       let query = supabase
         .from("orders")
         .select("*, order_items(*)")
         .order("order_date", { ascending: false })
         .limit(100);
 
-      // Apply search filter
       if (filters.search) {
         query = query.or(
           `customer_name.ilike.%${filters.search}%,salla_order_id.ilike.%${filters.search}%`
         );
       }
 
-      // Apply date filters
       if (filters.dateFrom) {
         query = query.gte("order_date", filters.dateFrom);
       }
@@ -63,30 +98,29 @@ export default function OrdersPage() {
 
       if (error) {
         console.error("Error fetching orders:", error);
-        toast.error("خطأ في جلب الطلبات");
+        toast.error("Error fetching orders: " + error.message);
         setOrders([]);
         return;
       }
 
       let filteredOrders = (data as OrderRowData[]) ?? [];
 
-      // Client-side filtering for status and item type (since they're on order_items)
       if (filters.status !== "all") {
         filteredOrders = filteredOrders.filter((order) =>
-          order.order_items.some((item) => item.status === filters.status)
+          order.order_items?.some((item) => item.status === filters.status)
         );
       }
 
       if (filters.itemType !== "all") {
         filteredOrders = filteredOrders.filter((order) =>
-          order.order_items.some((item) => item.item_type === filters.itemType)
+          order.order_items?.some((item) => item.item_type === filters.itemType)
         );
       }
 
       setOrders(filteredOrders);
     } catch (err) {
       console.error("Unexpected error:", err);
-      toast.error("حدث خطأ غير متوقع");
+      toast.error("An unexpected error occurred");
       setOrders([]);
     } finally {
       setLoading(false);
@@ -106,8 +140,8 @@ export default function OrdersPage() {
       {/* Page header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <ClipboardList className="h-6 w-6 text-primary" />
-          <h1 className="text-xl font-bold">إدارة الطلبات</h1>
+          <ClipboardList className="h-5 w-5 text-primary" />
+          <h1 className="text-xl font-bold">Orders</h1>
         </div>
         <Button
           variant="outline"
@@ -117,7 +151,7 @@ export default function OrdersPage() {
           className="gap-2"
         >
           <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-          تحديث
+          Refresh
         </Button>
       </div>
 
@@ -135,38 +169,52 @@ export default function OrdersPage() {
       {/* Results count + bulk actions */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <span className="text-sm text-muted-foreground">
-          {loading ? "جاري التحميل..." : `${orders.length} طلب`}
+          {loading ? "Loading..." : `${orders.length} orders`}
         </span>
         {selectedOrderIds.size > 0 && (
           <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground">
-              {selectedOrderIds.size} محدّد
+              {selectedOrderIds.size} selected
             </span>
             <Button
               variant="outline"
               size="sm"
               onClick={() => setBulkActionOpen(true)}
             >
-              تغيير الحالة جماعياً
+              Bulk Status Update
             </Button>
             <Button
               variant="ghost"
               size="sm"
               onClick={() => setSelectedOrderIds(new Set())}
             >
-              إلغاء التحديد
+              Deselect
             </Button>
           </div>
         )}
       </div>
 
+      {/* Role error diagnostic */}
+      {roleError && (
+        <Card className="border-destructive">
+          <CardContent className="py-6">
+            <div className="space-y-2">
+              <p className="font-semibold text-destructive">Access Issue:</p>
+              <pre className="text-sm whitespace-pre-wrap bg-muted p-3 rounded-lg text-muted-foreground font-mono">
+                {roleError}
+              </pre>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Table */}
       {loading ? (
         <Card>
-          <CardContent className="py-12">
-            <div className="flex items-center justify-center">
-              <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
-              <span className="mr-2 text-muted-foreground">جاري تحميل الطلبات...</span>
+          <CardContent className="py-16">
+            <div className="flex items-center justify-center gap-3">
+              <RefreshCw className="h-5 w-5 animate-spin text-muted-foreground" />
+              <span className="text-muted-foreground">Loading orders...</span>
             </div>
           </CardContent>
         </Card>

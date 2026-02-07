@@ -23,7 +23,7 @@ function getLast7Days() {
     const dateStr = d.toISOString().slice(0, 10);
     days.push({
       date: dateStr,
-      label: d.toLocaleDateString("ar-SA", { weekday: "short", day: "numeric", month: "short" }),
+      label: d.toLocaleDateString("en-US", { weekday: "short", day: "numeric", month: "short" }),
       revenue: 0,
     });
   }
@@ -71,18 +71,19 @@ export default async function DashboardPage() {
       ).length ?? 0;
 
     // Revenue by day (last 7 days) — from orders with settled_amount
-    const { data: ordersByDay } = await supabase
-      .from("orders")
-      .select("order_date, settled_amount")
-      .not("settled_amount", "is", null)
-      .gte("order_date", last7[0].date)
-      .lte("order_date", last7[6].date + "T23:59:59");
+      const sevenDayEnd = last7[6]?.date ?? last7[last7.length - 1]?.date;
+      const { data: ordersByDay } = await supabase
+        .from("orders")
+        .select("order_date, settled_amount")
+        .not("settled_amount", "is", null)
+        .gte("order_date", last7[0].date)
+        .lte("order_date", sevenDayEnd + "T23:59:59");
 
-    for (const row of ordersByDay ?? []) {
-      const dateStr = row.order_date.slice(0, 10);
-      const day = last7.find((d) => d.date === dateStr);
-      if (day) day.revenue += row.settled_amount ?? 0;
-    }
+      for (const row of ordersByDay ?? []) {
+        const dateStr = row.order_date.slice(0, 10);
+        const day = last7.find((d) => d.date === dateStr);
+        if (day) day.revenue += row.settled_amount ?? 0;
+      }
 
     // Order types breakdown (all items)
     const { data: itemsByType } = await supabase
@@ -104,8 +105,8 @@ export default async function DashboardPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">مرحباً بك في لوحة التحكم</h1>
-        <p className="text-muted-foreground">نظرة عامة على الطلبات والإيرادات</p>
+        <h1 className="text-2xl font-bold">Dashboard</h1>
+        <p className="text-sm text-muted-foreground">Overview of orders and revenue</p>
       </div>
 
       <StatsCards
@@ -118,7 +119,7 @@ export default async function DashboardPage() {
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>الإيرادات المسوّاة — آخر 7 أيام</CardTitle>
+            <CardTitle>Settled Revenue — Last 7 Days</CardTitle>
           </CardHeader>
           <CardContent>
             <RevenueChart data={last7} />
@@ -126,7 +127,7 @@ export default async function DashboardPage() {
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle>توزيع الطلبات حسب النوع</CardTitle>
+            <CardTitle>Orders by Type</CardTitle>
           </CardHeader>
           <CardContent>
             <OrderTypesPie data={orderTypesData} />

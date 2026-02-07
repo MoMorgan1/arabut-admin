@@ -66,6 +66,15 @@ export async function GET(request: NextRequest) {
           updated_at: new Date().toISOString(),
         };
 
+        // Auto-track coins delivery progress from FUT Transfer
+        if (res.amountOrdered != null && res.amountOrdered > 0) {
+          if (res.status === "finished") {
+            updatePayload.coins_delivered_k = res.amountOrdered;
+          } else if (res.coinsUsed != null && res.coinsUsed > 0) {
+            updatePayload.coins_delivered_k = Math.round((res.coinsUsed / 1000) * 100) / 100;
+          }
+        }
+
         // Auto-set customer note from accountCheck for interrupted orders
         if (res.status === "interrupted" && res.accountCheck) {
           const note = ACCOUNT_CHECK_NOTES[res.accountCheck];
@@ -90,7 +99,7 @@ export async function GET(request: NextRequest) {
             order_item_id: item.id,
             old_status: item.status,
             new_status: newStatus,
-            note: res.status === "interrupted" ? (updatePayload.customer_note as string) : "تحديث تلقائي من FUT Transfer",
+            note: res.status === "interrupted" ? (updatePayload.customer_note as string) : "Auto sync from FUT Transfer",
           });
         }
       }

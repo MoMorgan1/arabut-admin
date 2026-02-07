@@ -43,7 +43,7 @@ export default function NotificationItem({ notification }: NotificationItemProps
           onClick={handleClick}
           className="text-sm text-primary hover:underline shrink-0"
         >
-          عرض
+          View
         </Link>
       ) : null}
     </li>

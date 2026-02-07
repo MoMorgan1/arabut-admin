@@ -17,13 +17,13 @@ export default function GlobalError({
   return (
     <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 text-center px-4">
       <div className="space-y-2">
-        <h2 className="text-2xl font-bold">حدث خطأ غير متوقع</h2>
+        <h2 className="text-2xl font-bold">An unexpected error occurred</h2>
         <p className="text-muted-foreground max-w-md">
-          عذراً، حدث خطأ أثناء تحميل الصفحة. يرجى المحاولة مرة أخرى.
+          Sorry, something went wrong while loading the page. Please try again.
         </p>
       </div>
       <Button onClick={reset} variant="default">
-        إعادة المحاولة
+        Try Again
       </Button>
     </div>
   );

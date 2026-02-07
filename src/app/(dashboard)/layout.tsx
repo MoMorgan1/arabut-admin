@@ -7,26 +7,23 @@ import MobileNav from "@/components/layout/MobileNav";
 import { usePathname } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
-// Map pathnames to Arabic page titles
 const PAGE_TITLES: Record<string, string> = {
-  "/": "الرئيسية",
-  "/orders": "الطلبات",
-  "/financials": "الماليات",
-  "/suppliers": "الموردين",
-  "/notifications": "الإشعارات",
-  "/settings": "الإعدادات",
+  "/": "Dashboard",
+  "/orders": "Orders",
+  "/financials": "Financials",
+  "/suppliers": "Suppliers",
+  "/notifications": "Notifications",
+  "/settings": "Settings",
 };
 
 function getPageTitle(pathname: string): string {
-  // Exact match first
   if (PAGE_TITLES[pathname]) return PAGE_TITLES[pathname];
 
-  // Check if path starts with a known route
   for (const [path, title] of Object.entries(PAGE_TITLES)) {
     if (path !== "/" && pathname.startsWith(path)) return title;
   }
 
-  return "لوحة التحكم";
+  return "Dashboard";
 }
 
 export default function DashboardLayout({
@@ -54,7 +51,7 @@ export default function DashboardLayout({
 
   return (
     <div className="flex min-h-screen">
-      {/* Sidebar — on the RIGHT side (RTL) */}
+      {/* Sidebar */}
       <Sidebar
         collapsed={sidebarCollapsed}
         onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}

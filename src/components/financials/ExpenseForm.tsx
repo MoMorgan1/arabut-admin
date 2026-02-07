@@ -24,12 +24,12 @@ import { Plus } from "lucide-react";
 import { addExpenseAction } from "@/app/(dashboard)/financials/actions";
 
 const CATEGORIES = [
-  { value: "general", label: "عام" },
-  { value: "marketing", label: "إعلانات" },
-  { value: "operations", label: "تشغيل" },
-  { value: "salaries", label: "رواتب" },
-  { value: "software", label: "برمجيات" },
-  { value: "other", label: "أخرى" },
+  { value: "general", label: "General" },
+  { value: "marketing", label: "Marketing" },
+  { value: "operations", label: "Operations" },
+  { value: "salaries", label: "Salaries" },
+  { value: "software", label: "Software" },
+  { value: "other", label: "Other" },
 ];
 
 export default function ExpenseForm() {
@@ -50,7 +50,7 @@ export default function ExpenseForm() {
 
     const amountNum = parseFloat(amount);
     if (!description.trim() || Number.isNaN(amountNum) || amountNum <= 0) {
-      toast.error("يرجى إدخال الوصف والمبلغ صحيحاً");
+      toast.error("Please enter a valid description and amount");
       return;
     }
 
@@ -74,7 +74,7 @@ export default function ExpenseForm() {
       return;
     }
 
-    toast.success("تمت إضافة المصروف");
+    toast.success("Expense added successfully");
     setOpen(false);
     setDescription("");
     setAmount("");
@@ -88,26 +88,26 @@ export default function ExpenseForm() {
       <DialogTrigger asChild>
         <Button className="gap-2">
           <Plus className="h-4 w-4" />
-          إضافة مصروف
+          Add Expense
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>إضافة مصروف جديد</DialogTitle>
+          <DialogTitle>Add New Expense</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <Label htmlFor="desc">الوصف</Label>
+            <Label htmlFor="desc">Description</Label>
             <Input
               id="desc"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="وصف المصروف"
+              placeholder="Expense description"
               required
             />
           </div>
           <div>
-            <Label htmlFor="amount">المبلغ (ر.س)</Label>
+            <Label htmlFor="amount">Amount (SAR)</Label>
             <Input
               id="amount"
               type="number"
@@ -120,7 +120,7 @@ export default function ExpenseForm() {
             />
           </div>
           <div>
-            <Label htmlFor="category">التصنيف</Label>
+            <Label htmlFor="category">Category</Label>
             <Select value={category} onValueChange={setCategory}>
               <SelectTrigger>
                 <SelectValue />
@@ -135,7 +135,7 @@ export default function ExpenseForm() {
             </Select>
           </div>
           <div>
-            <Label htmlFor="date">التاريخ</Label>
+            <Label htmlFor="date">Date</Label>
             <Input
               id="date"
               type="date"
@@ -152,11 +152,11 @@ export default function ExpenseForm() {
               onChange={(e) => setIsRecurring(e.target.checked)}
               className="rounded border-border"
             />
-            <Label htmlFor="recurring">مصروف شهري متكرر</Label>
+            <Label htmlFor="recurring">Recurring monthly expense</Label>
           </div>
           {isRecurring && (
             <div>
-              <Label htmlFor="months">عدد الأشهر للتوزيع</Label>
+              <Label htmlFor="months">Number of months to distribute</Label>
               <Input
                 id="months"
                 type="number"
@@ -168,10 +168,10 @@ export default function ExpenseForm() {
           )}
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-              إلغاء
+              Cancel
             </Button>
             <Button type="submit" disabled={loading}>
-              {loading ? "جاري الحفظ..." : "حفظ"}
+              {loading ? "Saving..." : "Save"}
             </Button>
           </div>
         </form>

@@ -197,8 +197,8 @@ export async function processSallaWebhook(
       // Create notification for employees
       await supabase.from("notifications").insert({
         user_id: null, // broadcast — visible to all authenticated users
-        title: `طلب خدمة جديد: ${item.name}`,
-        message: `طلب جديد من ${body.customer.full_name} — ${item.name}`,
+        title: `New service order: ${item.name}`,
+        message: `New order from ${body.customer.full_name} — ${item.name}`,
         type: "info",
         link: `/orders/${order.id}`,
       });

@@ -6,14 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Pencil } from "lucide-react";
+import { Pencil, Loader2 } from "lucide-react";
 import { updateSupplierAction } from "@/app/(dashboard)/suppliers/actions";
 import type { Supplier } from "@/types/database";
 
@@ -31,10 +27,7 @@ export default function EditSupplierForm({ supplier }: EditSupplierFormProps) {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!name.trim()) {
-      toast.error("أدخل اسم المورد");
-      return;
-    }
+    if (!name.trim()) { toast.error("Enter a supplier name"); return; }
     setLoading(true);
     const result = await updateSupplierAction(supplier.id, {
       name: name.trim(),
@@ -42,11 +35,8 @@ export default function EditSupplierForm({ supplier }: EditSupplierFormProps) {
       is_active: isActive,
     });
     setLoading(false);
-    if (result?.error) {
-      toast.error(result.error);
-      return;
-    }
-    toast.success("تم تحديث المورد");
+    if (result?.error) { toast.error(result.error); return; }
+    toast.success("Supplier updated");
     setOpen(false);
     router.refresh();
   }
@@ -65,48 +55,31 @@ export default function EditSupplierForm({ supplier }: EditSupplierFormProps) {
     >
       <DialogTrigger asChild>
         <Button variant="outline" size="sm" className="gap-2">
-          <Pencil className="h-4 w-4" />
-          تعديل
+          <Pencil className="h-4 w-4" /> Edit
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>تعديل المورد</DialogTitle>
+          <DialogTitle>Edit Supplier</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <Label htmlFor="edit-name">اسم المورد</Label>
-            <Input
-              id="edit-name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              required
-            />
+            <Label htmlFor="edit-name">Supplier Name</Label>
+            <Input id="edit-name" value={name} onChange={(e) => setName(e.target.value)} required className="mt-1" />
           </div>
           <div>
-            <Label htmlFor="edit-contact">معلومات التواصل</Label>
-            <Input
-              id="edit-contact"
-              value={contactInfo}
-              onChange={(e) => setContactInfo(e.target.value)}
-            />
+            <Label htmlFor="edit-contact">Contact Info</Label>
+            <Input id="edit-contact" value={contactInfo} onChange={(e) => setContactInfo(e.target.value)} className="mt-1" />
           </div>
           <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              id="edit-active"
-              checked={isActive}
-              onChange={(e) => setIsActive(e.target.checked)}
-              className="rounded border-border"
-            />
-            <Label htmlFor="edit-active">نشط</Label>
+            <input type="checkbox" id="edit-active" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} className="rounded border-border" />
+            <Label htmlFor="edit-active">Active</Label>
           </div>
           <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-              إلغاء
-            </Button>
-            <Button type="submit" disabled={loading}>
-              {loading ? "جاري الحفظ..." : "حفظ"}
+            <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+            <Button type="submit" disabled={loading} className="gap-2">
+              {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+              Save
             </Button>
           </div>
         </form>

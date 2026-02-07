@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import OrderDetail, { type OrderDetailData } from "@/components/orders/OrderDetail";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { ArrowRight } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 
 export default async function OrderDetailPage({
   params,
@@ -23,11 +23,29 @@ export default async function OrderDetailPage({
     notFound();
   }
 
-  const { data: orderItems } = await supabase
-    .from("order_items")
-    .select("*")
-    .eq("order_id", id)
-    .order("created_at", { ascending: true });
+  // Fetch items, suppliers, and global exchange rate in parallel
+  const [{ data: orderItems }, { data: suppliers }, { data: rateSetting }] =
+    await Promise.all([
+      supabase
+        .from("order_items")
+        .select("*")
+        .eq("order_id", id)
+        .order("created_at", { ascending: true }),
+      supabase
+        .from("suppliers")
+        .select("*")
+        .eq("is_active", true)
+        .order("name"),
+      supabase
+        .from("system_settings")
+        .select("value")
+        .eq("key", "exchange_rate")
+        .single(),
+    ]);
+
+  const globalExchangeRate = rateSetting?.value
+    ? parseFloat(rateSetting.value)
+    : 3.75;
 
   const itemIds = (orderItems ?? []).map((i) => i.id);
 
@@ -60,12 +78,16 @@ export default async function OrderDetailPage({
       <div className="flex items-center gap-2">
         <Button variant="ghost" size="sm" asChild>
           <Link href="/orders" className="gap-1">
-            <ArrowRight className="h-4 w-4" />
-            العودة للطلبات
+            <ArrowLeft className="h-4 w-4" />
+            Back to Orders
           </Link>
         </Button>
       </div>
-      <OrderDetail order={orderWithItems} />
+      <OrderDetail
+        order={orderWithItems}
+        suppliers={suppliers ?? []}
+        globalExchangeRate={globalExchangeRate}
+      />
     </div>
   );
 }

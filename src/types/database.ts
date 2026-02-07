@@ -58,6 +58,7 @@ export interface Order {
   salla_order_id: string;
   salla_reference_id: string | null;
   customer_name: string;
+  customer_email: string | null;
   customer_phone: string | null;
   customer_phone_code: string;
   payment_method: string | null;
@@ -110,6 +111,12 @@ export interface OrderItem {
   // Notes
   notes: string | null;
   customer_note: string | null;
+
+  // Challenges
+  challenges_count: number | null;
+
+  // Coins delivery tracking
+  coins_delivered_k: number | null;
 
   created_at: string;
   updated_at: string;

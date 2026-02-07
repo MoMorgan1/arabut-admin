@@ -19,6 +19,7 @@ import {
 import { toast } from "sonner";
 import { STATUS_LABELS } from "@/lib/utils/constants";
 import { bulkUpdateOrdersStatusAction } from "@/app/(dashboard)/orders/actions";
+import { Loader2 } from "lucide-react";
 
 interface BulkStatusActionProps {
   orderIds: string[];
@@ -34,7 +35,7 @@ export default function BulkStatusAction({ orderIds, onClose }: BulkStatusAction
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!newStatus) {
-      toast.error("اختر الحالة الجديدة");
+      toast.error("Select a new status");
       return;
     }
     setLoading(true);
@@ -44,7 +45,7 @@ export default function BulkStatusAction({ orderIds, onClose }: BulkStatusAction
       toast.error(result.error);
       return;
     }
-    toast.success(`تم تحديث ${(result as { updated?: number }).updated ?? orderIds.length} عنصر`);
+    toast.success(`Updated ${(result as { updated?: number }).updated ?? orderIds.length} items`);
     setOpen(false);
     onClose();
     router.refresh();
@@ -54,32 +55,31 @@ export default function BulkStatusAction({ orderIds, onClose }: BulkStatusAction
     <Dialog open={open} onOpenChange={(o) => !o && (setOpen(false), onClose())}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>تغيير الحالة جماعياً</DialogTitle>
+          <DialogTitle>Bulk Status Update</DialogTitle>
           <p className="text-sm text-muted-foreground">
-            {orderIds.length} طلب — سيتم تطبيق الحالة على جميع عناصر هذه الطلبات
+            {orderIds.length} orders selected — status will be applied to all items
           </p>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <Select value={newStatus} onValueChange={setNewStatus}>
-              <SelectTrigger>
-                <SelectValue placeholder="الحالة الجديدة" />
-              </SelectTrigger>
-              <SelectContent>
-                {Object.entries(STATUS_LABELS).map(([value, label]) => (
-                  <SelectItem key={value} value={value}>
-                    {label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          <Select value={newStatus} onValueChange={setNewStatus}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select new status" />
+            </SelectTrigger>
+            <SelectContent>
+              {Object.entries(STATUS_LABELS).map(([value, label]) => (
+                <SelectItem key={value} value={value}>
+                  {label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => (setOpen(false), onClose())}>
-              إلغاء
+              Cancel
             </Button>
-            <Button type="submit" disabled={loading || !newStatus}>
-              {loading ? "جاري التطبيق..." : "تطبيق"}
+            <Button type="submit" disabled={loading || !newStatus} className="gap-2">
+              {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+              Apply
             </Button>
           </div>
         </form>

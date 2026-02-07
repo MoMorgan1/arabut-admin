@@ -39,12 +39,12 @@ export default function OrderFilters({
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:flex-wrap">
       {/* Search */}
       <div className="relative flex-1 min-w-[200px]">
-        <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
-          placeholder="بحث بالاسم أو رقم الطلب..."
+          placeholder="Search by name or order ID..."
           value={filters.search}
           onChange={(e) => updateFilter("search", e.target.value)}
-          className="pr-9"
+          className="pl-9"
         />
       </div>
 
@@ -54,10 +54,10 @@ export default function OrderFilters({
         onValueChange={(v) => updateFilter("status", v)}
       >
         <SelectTrigger className="w-[180px]">
-          <SelectValue placeholder="الحالة" />
+          <SelectValue placeholder="Status" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="all">جميع الحالات</SelectItem>
+          <SelectItem value="all">All Statuses</SelectItem>
           {Object.entries(STATUS_LABELS).map(([key, label]) => (
             <SelectItem key={key} value={key}>
               {label}
@@ -72,10 +72,10 @@ export default function OrderFilters({
         onValueChange={(v) => updateFilter("itemType", v)}
       >
         <SelectTrigger className="w-[160px]">
-          <SelectValue placeholder="النوع" />
+          <SelectValue placeholder="Type" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="all">جميع الأنواع</SelectItem>
+          <SelectItem value="all">All Types</SelectItem>
           {Object.entries(ORDER_TYPE_LABELS).map(([key, label]) => (
             <SelectItem key={key} value={key}>
               {label}
@@ -90,7 +90,6 @@ export default function OrderFilters({
         value={filters.dateFrom}
         onChange={(e) => updateFilter("dateFrom", e.target.value)}
         className="w-[160px]"
-        dir="ltr"
       />
 
       {/* Date to */}
@@ -99,14 +98,13 @@ export default function OrderFilters({
         value={filters.dateTo}
         onChange={(e) => updateFilter("dateTo", e.target.value)}
         className="w-[160px]"
-        dir="ltr"
       />
 
       {/* Reset */}
       {hasActiveFilters && (
         <Button variant="ghost" size="sm" onClick={onReset} className="gap-1">
           <X className="h-4 w-4" />
-          مسح الفلاتر
+          Clear
         </Button>
       )}
     </div>

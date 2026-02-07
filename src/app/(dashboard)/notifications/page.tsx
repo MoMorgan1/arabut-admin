@@ -11,7 +11,7 @@ export default async function NotificationsPage() {
   if (!user) {
     return (
       <div className="flex items-center justify-center min-h-[40vh] text-muted-foreground">
-        يرجى تسجيل الدخول
+        Please sign in
       </div>
     );
   }
@@ -30,19 +30,19 @@ export default async function NotificationsPage() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Bell className="h-6 w-6 text-primary" />
-          <h1 className="text-xl font-bold">الإشعارات</h1>
+          <h1 className="text-xl font-bold">Notifications</h1>
         </div>
         <MarkAllReadButton hasUnread={hasUnread} />
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>آخر الإشعارات</CardTitle>
+          <CardTitle>Recent Notifications</CardTitle>
         </CardHeader>
         <CardContent>
           {!notifications?.length ? (
             <p className="text-sm text-muted-foreground py-8 text-center">
-              لا توجد إشعارات
+              No notifications
             </p>
           ) : (
             <ul className="space-y-2">

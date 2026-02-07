@@ -19,17 +19,17 @@ export default function DashboardError({
     <div className="flex min-h-[50vh] flex-col items-center justify-center gap-4 text-center px-4">
       <AlertTriangle className="h-12 w-12 text-destructive" />
       <div className="space-y-2">
-        <h2 className="text-xl font-bold">حدث خطأ</h2>
+        <h2 className="text-xl font-bold">Something went wrong</h2>
         <p className="text-muted-foreground max-w-md">
-          عذراً، لم نتمكن من تحميل هذه الصفحة. يرجى المحاولة مرة أخرى أو العودة للرئيسية.
+          Sorry, we couldn&apos;t load this page. Please try again or go back to the dashboard.
         </p>
       </div>
       <div className="flex gap-3">
         <Button onClick={reset} variant="default">
-          إعادة المحاولة
+          Try Again
         </Button>
         <Button variant="outline" asChild>
-          <a href="/">العودة للرئيسية</a>
+          <a href="/">Back to Dashboard</a>
         </Button>
       </div>
     </div>

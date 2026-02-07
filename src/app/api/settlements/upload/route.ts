@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
-      return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const formData = await request.formData();
@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
 
     if (!file) {
       return NextResponse.json(
-        { error: "لم يتم رفع ملف" },
+        { error: "No file uploaded" },
         { status: 400 }
       );
     }
@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
     // File size validation
     if (file.size > MAX_FILE_SIZE) {
       return NextResponse.json(
-        { error: "حجم الملف يتجاوز 10MB" },
+        { error: "File size exceeds 10MB" },
         { status: 400 }
       );
     }
@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
     const ext = file.name.toLowerCase().slice(file.name.lastIndexOf("."));
     if (!ALLOWED_EXTENSIONS.includes(ext)) {
       return NextResponse.json(
-        { error: "نوع الملف غير مدعوم. يرجى رفع ملف Excel (.xlsx أو .xls)" },
+        { error: "Unsupported file type. Please upload an Excel file (.xlsx or .xls)" },
         { status: 400 }
       );
     }
@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
 
     if (rows.length === 0) {
       return NextResponse.json(
-        { error: "لم يتم العثور على صفوف صالحة في الملف" },
+        { error: "No valid rows found in the file" },
         { status: 400 }
       );
     }
@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
     if (settlementError || !settlement) {
       console.error("Settlement insert error:", settlementError);
       return NextResponse.json(
-        { error: "فشل إنشاء تسجيل التسوية" },
+        { error: "Failed to create settlement record" },
         { status: 500 }
       );
     }
@@ -129,7 +129,7 @@ export async function POST(request: NextRequest) {
       totalAmount,
     });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "خطأ غير متوقع";
+    const message = err instanceof Error ? err.message : "Unexpected error";
     console.error("Settlement upload error:", err);
     return NextResponse.json(
       { error: message },

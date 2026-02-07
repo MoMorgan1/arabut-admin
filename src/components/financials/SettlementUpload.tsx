@@ -18,7 +18,7 @@ export default function SettlementUpload() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!file) {
-      toast.error("اختر ملف Excel أولاً");
+      toast.error("Select an Excel file first");
       return;
     }
 
@@ -35,19 +35,19 @@ export default function SettlementUpload() {
       const data = await res.json();
 
       if (!res.ok) {
-        toast.error(data.error ?? "فشل رفع الملف");
+        toast.error(data.error ?? "Failed to upload file");
         setLoading(false);
         return;
       }
 
       toast.success(
-        `تم الرفع: ${data.matchedCount} مطابق، ${data.unmatchedCount} غير مطابق`
+        `Upload successful: ${data.matchedCount} matched, ${data.unmatchedCount} unmatched`
       );
       setFile(null);
       if (inputRef.current) inputRef.current.value = "";
       router.refresh();
     } catch (err) {
-      toast.error("حدث خطأ أثناء الرفع");
+      toast.error("An error occurred during upload");
     } finally {
       setLoading(false);
     }
@@ -58,9 +58,9 @@ export default function SettlementUpload() {
       <CardContent className="pt-6">
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <Label>ملف تسوية سلة (Excel)</Label>
+            <Label>Salla Settlement File (Excel)</Label>
             <p className="text-xs text-muted-foreground mt-1 mb-2">
-              عمودان: رقم الطلب (order_id) والمبلغ بعد الضريبة (amount)
+              Two columns: order ID (order_id) and amount after tax (amount)
             </p>
             <div className="flex items-center gap-2">
               <Input
@@ -84,7 +84,7 @@ export default function SettlementUpload() {
             ) : (
               <Upload className="h-4 w-4" />
             )}
-            رفع ومعايرة
+            Upload & Reconcile
           </Button>
         </form>
       </CardContent>

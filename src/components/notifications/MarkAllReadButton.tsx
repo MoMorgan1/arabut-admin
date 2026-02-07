@@ -21,14 +21,14 @@ export default function MarkAllReadButton({ hasUnread }: MarkAllReadButtonProps)
       toast.error(result.error);
       return;
     }
-    toast.success("تم تحديد الكل كمقروء");
+    toast.success("All marked as read");
     router.refresh();
   }
 
   return (
     <Button variant="outline" size="sm" onClick={handleClick} className="gap-2">
       <CheckCheck className="h-4 w-4" />
-      تحديد الكل كمقروء
+      Mark all read
     </Button>
   );
 }

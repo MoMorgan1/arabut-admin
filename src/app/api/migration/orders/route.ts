@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
-      return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     const { data: profile } = await supabase
       .from("profiles")
@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
       .eq("id", user.id)
       .single();
     if (profile?.role !== "admin") {
-      return NextResponse.json({ error: "المسؤول فقط" }, { status: 403 });
+      return NextResponse.json({ error: "Admin only" }, { status: 403 });
     }
 
     const body = await request.json();
@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
 
     if (!Array.isArray(orders) || orders.length === 0) {
       return NextResponse.json(
-        { error: "المطلوب: orders مصفوفة غير فارغة" },
+        { error: "Required: orders must be a non-empty array" },
         { status: 400 }
       );
     }
@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
 
     for (const o of orders) {
       if (!o.salla_order_id || !o.customer_name) {
-        errors.push(`طلب ناقص: salla_order_id و customer_name مطلوبان`);
+        errors.push(`Missing order: salla_order_id and customer_name are required`);
         continue;
       }
 
@@ -85,9 +85,9 @@ export async function POST(request: NextRequest) {
 
       if (orderErr) {
         if (orderErr.code === "23505") {
-          errors.push(`طلب مكرر: ${o.salla_order_id}`);
+          errors.push(`Duplicate order: ${o.salla_order_id}`);
         } else {
-          errors.push(`طلب ${o.salla_order_id}: ${orderErr.message}`);
+          errors.push(`Order ${o.salla_order_id}: ${orderErr.message}`);
         }
         continue;
       }
@@ -120,7 +120,7 @@ export async function POST(request: NextRequest) {
       errors: errors.length ? errors : undefined,
     });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "خطأ غير متوقع";
+    const message = err instanceof Error ? err.message : "Unexpected error";
     console.error("Migration error:", err);
     return NextResponse.json({ error: message }, { status: 500 });
   }

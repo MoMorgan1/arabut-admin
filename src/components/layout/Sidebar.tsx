@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import {
-  Home,
+  LayoutDashboard,
   ClipboardList,
   Wallet,
   Users,
@@ -27,12 +27,12 @@ import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 
 const NAV_ITEMS = [
-  { label: "الرئيسية", href: "/", icon: Home },
-  { label: "الطلبات", href: "/orders", icon: ClipboardList },
-  { label: "الماليات", href: "/financials", icon: Wallet },
-  { label: "الموردين", href: "/suppliers", icon: Users },
-  { label: "الإشعارات", href: "/notifications", icon: Bell },
-  { label: "الإعدادات", href: "/settings", icon: Settings },
+  { label: "Dashboard", href: "/", icon: LayoutDashboard },
+  { label: "Orders", href: "/orders", icon: ClipboardList },
+  { label: "Financials", href: "/financials", icon: Wallet },
+  { label: "Suppliers", href: "/suppliers", icon: Users },
+  { label: "Notifications", href: "/notifications", icon: Bell },
+  { label: "Settings", href: "/settings", icon: Settings },
 ];
 
 interface SidebarProps {
@@ -48,7 +48,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
     const supabase = createClient();
     const { error } = await supabase.auth.signOut();
     if (error) {
-      toast.error("حدث خطأ أثناء تسجيل الخروج");
+      toast.error("Error signing out");
       return;
     }
     router.push("/login");
@@ -64,25 +64,25 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
     <TooltipProvider delayDuration={0}>
       <aside
         className={cn(
-          "hidden md:flex flex-col border-s border-border bg-sidebar text-sidebar-foreground transition-all duration-300 h-screen sticky top-0",
-          collapsed ? "w-[68px]" : "w-[240px]"
+          "hidden md:flex flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-all duration-300 h-screen sticky top-0",
+          collapsed ? "w-[68px]" : "w-[220px]"
         )}
       >
         {/* Logo / Brand */}
-        <div className="flex items-center justify-center h-16 border-b border-sidebar-border px-4">
+        <div className="flex items-center h-16 border-b border-sidebar-border px-4">
           {!collapsed && (
-            <h1 className="text-lg font-bold text-sidebar-primary">
+            <h1 className="text-lg font-bold tracking-tight text-sidebar-primary">
               ArabUT
             </h1>
           )}
           {collapsed && (
-            <span className="text-lg font-bold text-sidebar-primary">A</span>
+            <span className="text-lg font-bold text-sidebar-primary mx-auto">A</span>
           )}
         </div>
 
         {/* Navigation */}
-        <ScrollArea className="flex-1 py-4">
-          <nav className="flex flex-col gap-1 px-2">
+        <ScrollArea className="flex-1 py-3">
+          <nav className="flex flex-col gap-0.5 px-2">
             {NAV_ITEMS.map((item) => {
               const Icon = item.icon;
               const active = isActive(item.href);
@@ -91,13 +91,13 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                   key={item.href}
                   href={item.href}
                   className={cn(
-                    "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                    "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
                     active
                       ? "bg-sidebar-accent text-sidebar-primary"
                       : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                   )}
                 >
-                  <Icon className="h-5 w-5 shrink-0" />
+                  <Icon className="h-4.5 w-4.5 shrink-0" />
                   {!collapsed && <span>{item.label}</span>}
                 </Link>
               );
@@ -106,7 +106,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                 return (
                   <Tooltip key={item.href}>
                     <TooltipTrigger asChild>{linkContent}</TooltipTrigger>
-                    <TooltipContent side="left" sideOffset={8}>
+                    <TooltipContent side="right" sideOffset={8}>
                       {item.label}
                     </TooltipContent>
                   </Tooltip>
@@ -131,11 +131,11 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                   className="w-full text-sidebar-foreground hover:text-destructive"
                   onClick={handleLogout}
                 >
-                  <LogOut className="h-5 w-5" />
+                  <LogOut className="h-4.5 w-4.5" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent side="left" sideOffset={8}>
-                تسجيل الخروج
+              <TooltipContent side="right" sideOffset={8}>
+                Sign out
               </TooltipContent>
             </Tooltip>
           ) : (
@@ -144,8 +144,8 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
               className="w-full justify-start gap-3 text-sidebar-foreground hover:text-destructive px-3"
               onClick={handleLogout}
             >
-              <LogOut className="h-5 w-5" />
-              <span>تسجيل الخروج</span>
+              <LogOut className="h-4.5 w-4.5" />
+              <span>Sign out</span>
             </Button>
           )}
         </div>

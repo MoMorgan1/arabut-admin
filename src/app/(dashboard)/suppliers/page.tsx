@@ -16,7 +16,7 @@ export default async function SuppliersPage() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Users className="h-6 w-6 text-primary" />
-          <h1 className="text-xl font-bold">الموردين</h1>
+          <h1 className="text-xl font-bold">Suppliers</h1>
         </div>
         <AddSupplierForm />
       </div>
@@ -24,7 +24,7 @@ export default async function SuppliersPage() {
       {!suppliers?.length ? (
         <Card>
           <CardContent className="py-12 text-center text-muted-foreground">
-            لا يوجد موردين مسجّلين. يمكنك إضافتهم من الإعدادات أو عبر قاعدة البيانات.
+            No suppliers registered. You can add them from settings or via the database.
           </CardContent>
         </Card>
       ) : (

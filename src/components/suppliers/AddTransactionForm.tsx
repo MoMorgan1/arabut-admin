@@ -6,28 +6,20 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Plus } from "lucide-react";
+import { Plus, Loader2 } from "lucide-react";
 import { addSupplierTransactionAction } from "@/app/(dashboard)/suppliers/actions";
 
 const TX_TYPES = [
-  { value: "deposit", label: "إيداع" },
-  { value: "deduction", label: "خصم" },
-  { value: "refund", label: "استرجاع" },
-  { value: "adjustment", label: "تعديل" },
+  { value: "deposit", label: "Deposit" },
+  { value: "deduction", label: "Deduction" },
+  { value: "refund", label: "Refund" },
+  { value: "adjustment", label: "Adjustment" },
 ] as const;
 
 interface AddTransactionFormProps {
@@ -46,24 +38,18 @@ export default function AddTransactionForm({ supplierId }: AddTransactionFormPro
     e.preventDefault();
     const num = parseFloat(amount);
     if (Number.isNaN(num) || num <= 0) {
-      toast.error("أدخل مبلغاً صحيحاً");
+      toast.error("Enter a valid amount");
       return;
     }
     setLoading(true);
     const result = await addSupplierTransactionAction(supplierId, {
-      type,
-      amount: num,
-      note: note.trim() || undefined,
+      type, amount: num, note: note.trim() || undefined,
     });
     setLoading(false);
-    if (result?.error) {
-      toast.error(result.error);
-      return;
-    }
-    toast.success("تمت إضافة المعاملة");
+    if (result?.error) { toast.error(result.error); return; }
+    toast.success("Transaction added");
     setOpen(false);
-    setAmount("");
-    setNote("");
+    setAmount(""); setNote("");
     router.refresh();
   }
 
@@ -71,58 +57,38 @@ export default function AddTransactionForm({ supplierId }: AddTransactionFormPro
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button variant="outline" size="sm" className="gap-2">
-          <Plus className="h-4 w-4" />
-          معاملة جديدة
+          <Plus className="h-4 w-4" /> New Transaction
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>إضافة معاملة</DialogTitle>
+          <DialogTitle>Add Transaction</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <Label>نوع المعاملة</Label>
+            <Label>Transaction Type</Label>
             <Select value={type} onValueChange={(v) => setType(v as typeof type)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
+              <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
               <SelectContent>
                 {TX_TYPES.map((t) => (
-                  <SelectItem key={t.value} value={t.value}>
-                    {t.label}
-                  </SelectItem>
+                  <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
           <div>
-            <Label htmlFor="amount">المبلغ (ر.س)</Label>
-            <Input
-              id="amount"
-              type="number"
-              step="0.01"
-              min="0"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              placeholder="0.00"
-              required
-            />
+            <Label htmlFor="amount">Amount (SAR)</Label>
+            <Input id="amount" type="number" step="0.01" min="0" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" required className="mt-1" />
           </div>
           <div>
-            <Label htmlFor="note">ملاحظة (اختياري)</Label>
-            <Input
-              id="note"
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              placeholder="ملاحظة"
-            />
+            <Label htmlFor="note">Note (optional)</Label>
+            <Input id="note" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Add a note..." className="mt-1" />
           </div>
           <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-              إلغاء
-            </Button>
-            <Button type="submit" disabled={loading}>
-              {loading ? "جاري الحفظ..." : "حفظ"}
+            <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+            <Button type="submit" disabled={loading} className="gap-2">
+              {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+              Save
             </Button>
           </div>
         </form>

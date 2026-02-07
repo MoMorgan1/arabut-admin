@@ -1,25 +1,25 @@
-// === Order Status Labels (Arabic) ===
+// === Order Status Labels ===
 
 export const COINS_STATUS_LABELS: Record<string, string> = {
-  new: "جديد",
-  processing: "جاري البدء",
-  shipping: "جاري الشحن",
-  on_hold_internal: "متوقف - مشكلة داخلية",
-  on_hold_customer: "متوقف - مشكلة من الزبون",
-  completed: "تم الشحن",
-  cancelled: "ملغي",
-  refunded: "استرجاع",
+  new: "New",
+  processing: "Processing",
+  shipping: "Shipping",
+  on_hold_internal: "On Hold — Internal",
+  on_hold_customer: "On Hold — Customer",
+  completed: "Completed",
+  cancelled: "Cancelled",
+  refunded: "Refunded",
 };
 
 export const SERVICE_STATUS_LABELS: Record<string, string> = {
-  new: "جديد",
-  credentials_sent: "تم إرسال البيانات للمحترف",
-  in_progress: "جاري العمل",
-  on_hold_customer: "متوقف - مشكلة من الزبون",
-  completed: "تم التنفيذ",
-  completed_comp: "تم مع تعويض",
-  cancelled: "ملغي",
-  refunded: "استرجاع",
+  new: "New",
+  credentials_sent: "Credentials Sent",
+  in_progress: "In Progress",
+  on_hold_customer: "On Hold — Customer",
+  completed: "Completed",
+  completed_comp: "Completed + Comp",
+  cancelled: "Cancelled",
+  refunded: "Refunded",
 };
 
 // Unified status labels (works for both coins and service items)
@@ -37,48 +37,48 @@ export type BadgeVariant = "default" | "secondary" | "destructive" | "outline";
 
 export interface StatusStyle {
   label: string;
-  color: string; // Tailwind bg class
+  color: string;
   textColor: string;
 }
 
 export const STATUS_STYLES: Record<string, StatusStyle> = {
-  new: { label: "جديد", color: "bg-yellow-500/20", textColor: "text-yellow-400" },
-  processing: { label: "جاري البدء", color: "bg-yellow-500/20", textColor: "text-yellow-400" },
-  shipping: { label: "جاري الشحن", color: "bg-blue-500/20", textColor: "text-blue-400" },
-  in_progress: { label: "جاري العمل", color: "bg-blue-500/20", textColor: "text-blue-400" },
-  credentials_sent: { label: "تم إرسال البيانات", color: "bg-blue-500/20", textColor: "text-blue-400" },
-  on_hold_internal: { label: "متوقف - داخلي", color: "bg-orange-500/20", textColor: "text-orange-400" },
-  on_hold_customer: { label: "متوقف - الزبون", color: "bg-orange-500/20", textColor: "text-orange-400" },
-  completed: { label: "مكتمل", color: "bg-green-500/20", textColor: "text-green-400" },
-  completed_comp: { label: "مكتمل + تعويض", color: "bg-green-500/20", textColor: "text-green-400" },
-  cancelled: { label: "ملغي", color: "bg-red-500/20", textColor: "text-red-400" },
-  refunded: { label: "استرجاع", color: "bg-red-500/20", textColor: "text-red-400" },
+  new: { label: "New", color: "bg-yellow-500/20", textColor: "text-yellow-400" },
+  processing: { label: "Processing", color: "bg-yellow-500/20", textColor: "text-yellow-400" },
+  shipping: { label: "Shipping", color: "bg-blue-500/20", textColor: "text-blue-400" },
+  in_progress: { label: "In Progress", color: "bg-blue-500/20", textColor: "text-blue-400" },
+  credentials_sent: { label: "Credentials Sent", color: "bg-blue-500/20", textColor: "text-blue-400" },
+  on_hold_internal: { label: "On Hold — Internal", color: "bg-orange-500/20", textColor: "text-orange-400" },
+  on_hold_customer: { label: "On Hold — Customer", color: "bg-orange-500/20", textColor: "text-orange-400" },
+  completed: { label: "Completed", color: "bg-green-500/20", textColor: "text-green-400" },
+  completed_comp: { label: "Completed + Comp", color: "bg-green-500/20", textColor: "text-green-400" },
+  cancelled: { label: "Cancelled", color: "bg-red-500/20", textColor: "text-red-400" },
+  refunded: { label: "Refunded", color: "bg-red-500/20", textColor: "text-red-400" },
 };
 
 // === Order Type Labels ===
 export const ORDER_TYPE_LABELS: Record<string, string> = {
-  coins: "كوينز",
-  fut_rank: "فوت رانك",
-  challenges: "تحديات",
-  raffles: "رايفلز",
-  other: "أخرى",
+  coins: "Coins",
+  fut_rank: "FUT Rank",
+  challenges: "Challenges",
+  raffles: "Raffles",
+  other: "Other",
 };
 
-// === Account Check Notes (FUT Transfer → Arabic) ===
+// === Account Check Notes (FUT Transfer) ===
 export const ACCOUNT_CHECK_NOTES: Record<string, string> = {
-  wrongBA: "الأكواد الاحتياطية غلط — محتاج أكواد جديدة",
-  wrongUserPass: "الإيميل أو الباسورد غلط",
-  wrongConsole: "المنصة غلط — تحقق من نوع الطلب",
-  noClub: "الحساب مفيهوش نادي",
-  tlFull: "قائمة الانتقالات ممتلئة — محتاج 3 أماكن فاضية",
-  notEnoughCoins: "محتاج يكون في الحساب أكثر من 1500 كوينز",
-  console: "لازم تسجل خروج من الكونسول",
-  noTM: "الحساب مفيهوش سوق انتقالات",
-  wrongPersona: "محتاج تغيير الـ persona",
-  captcha: "محتاج حل الكابتشا",
-  unassignedItemsPresent: "في عناصر غير مخصصة — لازم تكون أقل من 50",
-  FailWebAppCustomerLocked: "حساب الويب آب مقفول",
-  finished: "تم التحقق بنجاح ✅",
+  wrongBA: "Wrong backup codes — need new ones",
+  wrongUserPass: "Wrong email or password",
+  wrongConsole: "Wrong platform — check order type",
+  noClub: "Account has no club",
+  tlFull: "Transfer list is full — need 3 empty spots",
+  notEnoughCoins: "Account must have more than 1,500 coins",
+  console: "Must sign out from console",
+  noTM: "Account has no transfer market",
+  wrongPersona: "Need to change persona",
+  captcha: "Need to solve captcha",
+  unassignedItemsPresent: "Unassigned items present — must be less than 50",
+  FailWebAppCustomerLocked: "Web app account is locked",
+  finished: "Verified successfully",
 };
 
 // === Pricing Tiers (matches N8N) ===
@@ -86,11 +86,11 @@ export const PRICING = {
   usdToEurRate: 0.84,
   PS: {
     slow_AnyQty: 14,
-    fast_Tier1: 16, // ≤700K
-    fast_Tier2: 18, // ≤1500K
-    fast_Tier3: 22, // ≤2000K
-    fast_Tier4: 24, // ≤5000K
-    fast_Tier5: 26, // >5000K
+    fast_Tier1: 16,
+    fast_Tier2: 18,
+    fast_Tier3: 22,
+    fast_Tier4: 24,
+    fast_Tier5: 26,
   },
   PC: {
     slow_AnyQty: 25,

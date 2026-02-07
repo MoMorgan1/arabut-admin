@@ -93,7 +93,7 @@ export default async function FinancialsPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold flex items-center gap-2">
           <Wallet className="h-6 w-6" />
-          الماليات
+          Financials
         </h1>
       </div>
 
@@ -101,15 +101,15 @@ export default async function FinancialsPage() {
         <TabsList className="grid w-full max-w-md grid-cols-3">
           <TabsTrigger value="profit" className="gap-2">
             <TrendingUp className="h-4 w-4" />
-            أرباح
+            Profit
           </TabsTrigger>
           <TabsTrigger value="revenue" className="gap-2">
             <Receipt className="h-4 w-4" />
-            إيرادات
+            Revenue
           </TabsTrigger>
           <TabsTrigger value="expenses" className="gap-2">
             <Receipt className="h-4 w-4" />
-            مصاريف
+            Expenses
           </TabsTrigger>
         </TabsList>
 
@@ -120,7 +120,7 @@ export default async function FinancialsPage() {
             expenses={expenses}
           />
           <p className="text-sm text-muted-foreground">
-            الأرقام للشهر الحالي (من {start} إلى {end.slice(0, 10)})
+            Figures for the current month (from {start} to {end.slice(0, 10)})
           </p>
         </TabsContent>
 
@@ -128,12 +128,12 @@ export default async function FinancialsPage() {
           <SettlementUpload />
           <Card>
             <CardHeader>
-              <CardTitle>آخر التسويات</CardTitle>
+              <CardTitle>Recent Settlements</CardTitle>
             </CardHeader>
             <CardContent>
               {!settlements?.length ? (
                 <p className="text-sm text-muted-foreground">
-                  لم يتم رفع أي ملف تسوية بعد
+                  No settlement files uploaded yet
                 </p>
               ) : (
                 <ul className="space-y-2">
@@ -144,8 +144,8 @@ export default async function FinancialsPage() {
                     >
                       <span>{s.file_name}</span>
                       <span className="text-muted-foreground">
-                        {formatDate(s.upload_date)} — مطابق: {s.matched_count}،
-                        غير مطابق: {s.unmatched_count} —{" "}
+                        {formatDate(s.upload_date)} — Matched: {s.matched_count},
+                        Unmatched: {s.unmatched_count} —{" "}
                         {formatSAR(s.total_amount)}
                       </span>
                     </li>
@@ -162,12 +162,12 @@ export default async function FinancialsPage() {
           </div>
           <Card>
             <CardHeader>
-              <CardTitle>سجل المصاريف</CardTitle>
+              <CardTitle>Expense Log</CardTitle>
             </CardHeader>
             <CardContent>
               {!expensesList?.length ? (
                 <p className="text-sm text-muted-foreground">
-                  لا توجد مصاريف مسجّلة
+                  No expenses recorded
                 </p>
               ) : (
                 <ul className="space-y-2">
@@ -178,12 +178,12 @@ export default async function FinancialsPage() {
                     >
                       <div>
                         <span className="font-medium">{e.description}</span>
-                        <span className="text-muted-foreground mr-2">
+                        <span className="text-muted-foreground ml-2">
                           — {e.category}
                         </span>
                         {e.is_recurring && (
                           <span className="text-xs text-muted-foreground">
-                            (شهري)
+                            (monthly)
                           </span>
                         )}
                       </div>

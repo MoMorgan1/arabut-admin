@@ -13,17 +13,14 @@ export async function addExpenseAction(params: {
   expense_date: string;
 }) {
   const supabase = await createClient();
-
-  // Auth guard
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "غير مصرح" };
+  if (!user) return { error: "Unauthorized" };
 
-  // Validate inputs
-  if (!params.description?.trim()) return { error: "وصف المصروف مطلوب" };
-  if (!params.amount || params.amount <= 0) return { error: "المبلغ يجب أن يكون أكبر من صفر" };
-  if (!params.category?.trim()) return { error: "التصنيف مطلوب" };
+  if (!params.description?.trim()) return { error: "Description is required" };
+  if (!params.amount || params.amount <= 0) return { error: "Amount must be greater than zero" };
+  if (!params.category?.trim()) return { error: "Category is required" };
   if (!params.expense_date || !/^\d{4}-\d{2}-\d{2}/.test(params.expense_date)) {
-    return { error: "تاريخ المصروف غير صالح" };
+    return { error: "Invalid expense date" };
   }
 
   const { error } = await supabase.from("expenses").insert({

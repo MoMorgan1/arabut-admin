@@ -26,7 +26,7 @@ export default function AddSupplierForm() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim()) {
-      toast.error("أدخل اسم المورد");
+      toast.error("Enter supplier name");
       return;
     }
     setLoading(true);
@@ -36,7 +36,7 @@ export default function AddSupplierForm() {
       toast.error(result.error);
       return;
     }
-    toast.success("تمت إضافة المورد");
+    toast.success("Supplier added successfully");
     setOpen(false);
     setName("");
     setContactInfo("");
@@ -48,39 +48,39 @@ export default function AddSupplierForm() {
       <DialogTrigger asChild>
         <Button className="gap-2">
           <Plus className="h-4 w-4" />
-          إضافة مورد
+          Add Supplier
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>إضافة مورد جديد</DialogTitle>
+          <DialogTitle>Add New Supplier</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <Label htmlFor="name">اسم المورد</Label>
+            <Label htmlFor="name">Supplier Name</Label>
             <Input
               id="name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="اسم المورد"
+              placeholder="Supplier name"
               required
             />
           </div>
           <div>
-            <Label htmlFor="contact">معلومات التواصل (اختياري)</Label>
+            <Label htmlFor="contact">Contact Information (Optional)</Label>
             <Input
               id="contact"
               value={contactInfo}
               onChange={(e) => setContactInfo(e.target.value)}
-              placeholder="رقم الجوال أو البريد"
+              placeholder="Phone number or email"
             />
           </div>
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-              إلغاء
+              Cancel
             </Button>
             <Button type="submit" disabled={loading}>
-              {loading ? "جاري الحفظ..." : "حفظ"}
+              {loading ? "Saving..." : "Save"}
             </Button>
           </div>
         </form>

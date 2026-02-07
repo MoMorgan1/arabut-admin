@@ -24,7 +24,7 @@ export default function OrderTypesPie({ data }: OrderTypesPieProps) {
   if (!chartData.length || chartData.every((d) => d.value === 0)) {
     return (
       <div className="flex h-[260px] items-center justify-center text-muted-foreground text-sm">
-        لا توجد طلبات لعرضها
+        No orders to display
       </div>
     );
   }
@@ -48,7 +48,7 @@ export default function OrderTypesPie({ data }: OrderTypesPieProps) {
           ))}
         </Pie>
         <Tooltip
-          formatter={(value: number | undefined) => [value ?? 0, "العدد"]}
+          formatter={(value: number | undefined) => [value ?? 0, "Count"]}
           contentStyle={{ borderRadius: "8px", border: "1px solid hsl(var(--border))" }}
         />
         <Legend />

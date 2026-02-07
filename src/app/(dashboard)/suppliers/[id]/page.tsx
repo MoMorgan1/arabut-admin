@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowRight } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { formatSAR } from "@/lib/utils/formatters";
 import TransactionLog from "@/components/suppliers/TransactionLog";
 import EditSupplierForm from "@/components/suppliers/EditSupplierForm";
@@ -38,8 +38,8 @@ export default async function SupplierDetailPage({
       <div className="flex items-center gap-2">
         <Button variant="ghost" size="sm" asChild>
           <Link href="/suppliers" className="gap-1">
-            <ArrowRight className="h-4 w-4" />
-            العودة للموردين
+            <ArrowLeft className="h-4 w-4" />
+            Back to Suppliers
           </Link>
         </Button>
       </div>
@@ -57,12 +57,12 @@ export default async function SupplierDetailPage({
             </div>
             <div className="flex items-center gap-2 flex-wrap">
               {!supplier.is_active && (
-                <Badge variant="secondary">غير نشط</Badge>
+                <Badge variant="secondary">Inactive</Badge>
               )}
               <span className="text-2xl font-bold">
                 {formatSAR(supplier.balance)}
               </span>
-              <span className="text-sm text-muted-foreground">الرصيد</span>
+              <span className="text-sm text-muted-foreground">Balance</span>
               <EditSupplierForm supplier={supplier} />
               <AddTransactionForm supplierId={supplier.id} />
             </div>
@@ -72,7 +72,7 @@ export default async function SupplierDetailPage({
 
       <Card>
         <CardHeader>
-          <CardTitle>سجل المعاملات</CardTitle>
+          <CardTitle>Transaction Log</CardTitle>
         </CardHeader>
         <CardContent>
           <TransactionLog transactions={transactions ?? []} />

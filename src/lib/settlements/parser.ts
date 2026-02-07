@@ -64,7 +64,7 @@ export function parseSettlementExcel(buffer: ArrayBuffer): SettlementRow[] {
 
   if (orderIdIdx < 0 || amountIdx < 0) {
     throw new Error(
-      "الملف يجب أن يحتوي على عمود لرقم الطلب وعمود للمبلغ (مثلاً: order_id, amount)"
+      "File must contain an order ID column and an amount column (e.g., order_id, amount)"
     );
   }
 
