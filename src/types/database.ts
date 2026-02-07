@@ -185,7 +185,7 @@ export interface PricingRule {
 
 export interface Notification {
   id: string;
-  user_id: string;
+  user_id: string | null;
   title: string;
   message: string | null;
   type: "info" | "warning" | "error" | "success";

@@ -2,14 +2,41 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { parseSettlementExcel } from "@/lib/settlements/parser";
 
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+const ALLOWED_EXTENSIONS = [".xlsx", ".xls"];
+
 export async function POST(request: NextRequest) {
   try {
+    // Auth guard
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
+    }
+
     const formData = await request.formData();
     const file = formData.get("file") as File | null;
 
     if (!file) {
       return NextResponse.json(
         { error: "لم يتم رفع ملف" },
+        { status: 400 }
+      );
+    }
+
+    // File size validation
+    if (file.size > MAX_FILE_SIZE) {
+      return NextResponse.json(
+        { error: "حجم الملف يتجاوز 10MB" },
+        { status: 400 }
+      );
+    }
+
+    // File extension validation
+    const ext = file.name.toLowerCase().slice(file.name.lastIndexOf("."));
+    if (!ALLOWED_EXTENSIONS.includes(ext)) {
+      return NextResponse.json(
+        { error: "نوع الملف غير مدعوم. يرجى رفع ملف Excel (.xlsx أو .xls)" },
         { status: 400 }
       );
     }
@@ -23,9 +50,6 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
 
     // Create settlement record
     const fileName = file.name;

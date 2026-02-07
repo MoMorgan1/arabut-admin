@@ -69,8 +69,8 @@ export default function OrdersTable({
         <TableBody>
           {orders.map((order) => {
             // Determine display info from items
-            const firstItem = order.order_items[0];
-            const itemCount = order.order_items.length;
+            const firstItem = order.order_items?.[0];
+            const itemCount = order.order_items?.length ?? 0;
             const itemTypes = [...new Set(order.order_items.map((i) => i.item_type))];
             const totalCoinsK = order.order_items
               .filter((i) => i.item_type === "coins")

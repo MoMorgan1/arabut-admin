@@ -2,6 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { STATUS_LABELS } from "@/lib/utils/constants";
+
+const VALID_STATUSES = Object.keys(STATUS_LABELS);
 
 export async function updateOrderItemStatus(
   orderItemId: string,
@@ -9,6 +12,14 @@ export async function updateOrderItemStatus(
   note?: string
 ) {
   const supabase = await createClient();
+
+  // Auth guard
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "غير مصرح" };
+
+  // Validate inputs
+  if (!orderItemId?.trim()) return { error: "معرّف العنصر مطلوب" };
+  if (!VALID_STATUSES.includes(newStatus)) return { error: "حالة غير صالحة" };
 
   // Get current item to read old status and order_id
   const { data: item, error: fetchError } = await supabase
@@ -65,8 +76,13 @@ export async function bulkUpdateOrdersStatusAction(
   newStatus: string
 ) {
   if (!orderIds.length) return { error: "لم يتم اختيار أي طلب" };
+  if (!VALID_STATUSES.includes(newStatus)) return { error: "حالة غير صالحة" };
 
   const supabase = await createClient();
+
+  // Auth guard
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "غير مصرح" };
 
   const { data: items } = await supabase
     .from("order_items")

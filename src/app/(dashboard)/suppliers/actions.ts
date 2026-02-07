@@ -8,6 +8,14 @@ export async function createSupplierAction(params: {
   contact_info?: string;
 }) {
   const supabase = await createClient();
+
+  // Auth guard
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "غير مصرح" };
+
+  // Validate inputs
+  if (!params.name?.trim()) return { error: "اسم المورد مطلوب" };
+
   const { error } = await supabase.from("suppliers").insert({
     name: params.name.trim(),
     contact_info: params.contact_info?.trim() || null,
@@ -24,6 +32,11 @@ export async function updateSupplierAction(
   params: { name?: string; contact_info?: string; is_active?: boolean }
 ) {
   const supabase = await createClient();
+
+  // Auth guard
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "غير مصرح" };
+
   const { error } = await supabase
     .from("suppliers")
     .update({
@@ -50,7 +63,16 @@ export async function addSupplierTransactionAction(
   }
 ) {
   const supabase = await createClient();
+
+  // Auth guard
   const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "غير مصرح" };
+
+  // Validate inputs
+  if (!supplierId?.trim()) return { error: "معرّف المورد مطلوب" };
+  if (!params.amount || params.amount <= 0) return { error: "المبلغ يجب أن يكون أكبر من صفر" };
+  const validTypes = ["deposit", "deduction", "refund", "adjustment"];
+  if (!validTypes.includes(params.type)) return { error: "نوع معاملة غير صالح" };
 
   const { data: supplier, error: fetchErr } = await supabase
     .from("suppliers")

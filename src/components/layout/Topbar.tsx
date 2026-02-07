@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -76,10 +77,12 @@ export default function Topbar({
       <div className="flex-1" />
 
       {/* Notifications */}
-      <Button variant="ghost" size="icon" className="relative">
-        <Bell className="h-5 w-5" />
-        {/* Notification dot */}
-        <span className="absolute top-2 left-2 h-2 w-2 rounded-full bg-destructive" />
+      <Button variant="ghost" size="icon" className="relative" asChild>
+        <Link href="/notifications" aria-label="الإشعارات">
+          <Bell className="h-5 w-5" />
+          {/* Notification dot */}
+          <span className="absolute top-2 left-2 h-2 w-2 rounded-full bg-destructive" />
+        </Link>
       </Button>
 
       {/* User menu */}

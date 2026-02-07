@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import {
   Home,
@@ -23,6 +23,8 @@ import {
   TooltipTrigger,
   TooltipProvider,
 } from "@/components/ui/tooltip";
+import { createClient } from "@/lib/supabase/client";
+import { toast } from "sonner";
 
 const NAV_ITEMS = [
   { label: "الرئيسية", href: "/", icon: Home },
@@ -40,6 +42,18 @@ interface SidebarProps {
 
 export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const pathname = usePathname();
+  const router = useRouter();
+
+  async function handleLogout() {
+    const supabase = createClient();
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      toast.error("حدث خطأ أثناء تسجيل الخروج");
+      return;
+    }
+    router.push("/login");
+    router.refresh();
+  }
 
   function isActive(href: string) {
     if (href === "/") return pathname === "/";
@@ -115,6 +129,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                   variant="ghost"
                   size="icon"
                   className="w-full text-sidebar-foreground hover:text-destructive"
+                  onClick={handleLogout}
                 >
                   <LogOut className="h-5 w-5" />
                 </Button>
@@ -127,6 +142,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
             <Button
               variant="ghost"
               className="w-full justify-start gap-3 text-sidebar-foreground hover:text-destructive px-3"
+              onClick={handleLogout}
             >
               <LogOut className="h-5 w-5" />
               <span>تسجيل الخروج</span>

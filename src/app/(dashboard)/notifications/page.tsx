@@ -19,7 +19,7 @@ export default async function NotificationsPage() {
   const { data: notifications } = await supabase
     .from("notifications")
     .select("*")
-    .eq("user_id", user.id)
+    .or(`user_id.eq.${user.id},user_id.is.null`)
     .order("created_at", { ascending: false })
     .limit(50);
 
