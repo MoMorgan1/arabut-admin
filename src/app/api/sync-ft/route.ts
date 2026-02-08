@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { getOrderStatusBulk, getOrderStatus, mapFTStatusToOurStatus } from "@/lib/fut-transfer/api";
+import { getOrderStatusBulk, getOrderStatus, mapFTStatusToOurStatus, eurToUsd } from "@/lib/fut-transfer/api";
 import { ACCOUNT_CHECK_NOTES } from "@/lib/utils/constants";
 import { getWorstStatus } from "@/lib/utils/helpers";
 
@@ -81,22 +81,24 @@ export async function POST(request: NextRequest) {
         ftRes.economyState ?? ""
       );
 
+      // Convert toPay from EUR to USD
+      const actualCostUsd = ftRes.toPay != null ? await eurToUsd(ftRes.toPay) : null;
+
       const updatePayload: Record<string, unknown> = {
         status: newStatus,
-        ft_status: ftRes.status,
+        ft_status: ftRes.economyStateLong || ftRes.economyState || ftRes.status,
         ft_last_synced: new Date().toISOString(),
-        actual_cost: ftRes.toPay ?? null,
+        actual_cost: actualCostUsd,
         updated_at: new Date().toISOString(),
       };
 
-      // Auto-track coins delivery
+      // Auto-track coins delivery — "amount" = K delivered so far
       let coinsDeliveredK: number | null = null;
       if (ftRes.amountOrdered != null && ftRes.amountOrdered > 0) {
         if (ftRes.status === "finished") {
           coinsDeliveredK = ftRes.amountOrdered;
-        } else if (ftRes.coinsUsed != null && ftRes.coinsUsed > 0) {
-          coinsDeliveredK =
-            Math.round((ftRes.coinsUsed / 1000) * 100) / 100;
+        } else if (ftRes.amount != null && ftRes.amount > 0) {
+          coinsDeliveredK = ftRes.amount;
         }
         if (coinsDeliveredK != null) {
           updatePayload.coins_delivered_k = coinsDeliveredK;
@@ -147,21 +149,24 @@ export async function POST(request: NextRequest) {
           ftRes.economyState ?? ""
         );
 
+        // Convert toPay from EUR to USD
+        const bulkActualCostUsd = ftRes.toPay != null ? await eurToUsd(ftRes.toPay) : null;
+
         const updatePayload: Record<string, unknown> = {
           status: newStatus,
-          ft_status: ftRes.status,
+          ft_status: ftRes.economyStateLong || ftRes.economyState || ftRes.status,
           ft_last_synced: new Date().toISOString(),
-          actual_cost: ftRes.toPay ?? null,
+          actual_cost: bulkActualCostUsd,
           updated_at: new Date().toISOString(),
         };
 
+        // Auto-track coins delivery — "amount" = K delivered so far
         let coinsDeliveredK: number | null = null;
         if (ftRes.amountOrdered != null && ftRes.amountOrdered > 0) {
           if (ftRes.status === "finished") {
             coinsDeliveredK = ftRes.amountOrdered;
-          } else if (ftRes.coinsUsed != null && ftRes.coinsUsed > 0) {
-            coinsDeliveredK =
-              Math.round((ftRes.coinsUsed / 1000) * 100) / 100;
+          } else if (ftRes.amount != null && ftRes.amount > 0) {
+            coinsDeliveredK = ftRes.amount;
           }
           if (coinsDeliveredK != null) {
             updatePayload.coins_delivered_k = coinsDeliveredK;

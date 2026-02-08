@@ -64,6 +64,23 @@ export default function UserActions({ userId, currentRole, isActive }: Props) {
       >
         {isActive ? "Disable" : "Enable"}
       </Button>
+      <Button
+        variant="ghost"
+        size="sm"
+        className="text-xs h-8 text-destructive hover:text-destructive"
+        onClick={async () => {
+          if (!confirm("Are you sure you want to delete this user? This action cannot be undone.")) return;
+          setLoading(true);
+          const result = await updateUserRoleAction(userId, { is_active: false });
+          setLoading(false);
+          if (result?.error) { toast.error(result.error); return; }
+          toast.success("User disabled (soft delete)");
+          router.refresh();
+        }}
+        disabled={loading}
+      >
+        Delete
+      </Button>
     </div>
   );
 }

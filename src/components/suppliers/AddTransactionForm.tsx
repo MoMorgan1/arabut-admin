@@ -77,7 +77,7 @@ export default function AddTransactionForm({ supplierId }: AddTransactionFormPro
             </Select>
           </div>
           <div>
-            <Label htmlFor="amount">Amount (SAR)</Label>
+            <Label htmlFor="amount">Amount (USD)</Label>
             <Input id="amount" type="number" step="0.01" min="0" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" required className="mt-1" />
           </div>
           <div>

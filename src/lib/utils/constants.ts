@@ -58,9 +58,9 @@ export const STATUS_STYLES: Record<string, StatusStyle> = {
 // === Order Type Labels ===
 export const ORDER_TYPE_LABELS: Record<string, string> = {
   coins: "Coins",
-  fut_rank: "FUT Rank",
-  challenges: "Challenges",
-  raffles: "Raffles",
+  fut: "FUT",
+  sbc: "SBC",
+  rivales: "Rivales",
   other: "Other",
 };
 

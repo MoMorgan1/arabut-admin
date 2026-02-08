@@ -13,7 +13,7 @@ export async function createSupplierAction(params: {
   if (!params.name?.trim()) return { error: "Supplier name is required" };
 
   const { error } = await supabase.from("suppliers").insert({
-    name: params.name.trim(),
+    display_name: params.name.trim(),
     contact_info: params.contact_info?.trim() || null,
     balance: 0,
     is_active: true,
@@ -34,7 +34,7 @@ export async function updateSupplierAction(
   const { error } = await supabase
     .from("suppliers")
     .update({
-      ...(params.name !== undefined && { name: params.name.trim() }),
+      ...(params.name !== undefined && { display_name: params.name.trim() }),
       ...(params.contact_info !== undefined && {
         contact_info: params.contact_info?.trim() || null,
       }),

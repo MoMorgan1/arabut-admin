@@ -16,7 +16,7 @@ import { toast } from "sonner";
 import { createSupplierAccountAction } from "@/app/(dashboard)/settings/actions";
 
 interface Props {
-  suppliers: { id: string; name: string; user_id: string | null }[];
+  suppliers: { id: string; display_name: string; user_id: string | null }[];
 }
 
 export default function LinkSupplierAccount({ suppliers }: Props) {
@@ -67,7 +67,7 @@ export default function LinkSupplierAccount({ suppliers }: Props) {
                 <SelectTrigger className="mt-1"><SelectValue placeholder="Select supplier" /></SelectTrigger>
                 <SelectContent>
                   {unlinked.map((s) => (
-                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                    <SelectItem key={s.id} value={s.id}>{s.display_name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>

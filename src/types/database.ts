@@ -1,7 +1,7 @@
 // Database types — mirrors supabase-schema.sql
 // In production, generate with: npx supabase gen types typescript
 
-export type OrderType = "coins" | "fut_rank" | "challenges" | "raffles" | "other";
+export type OrderType = "coins" | "fut" | "sbc" | "rivales" | "other";
 export type Platform = "PS" | "PC";
 export type ShippingType = "fast" | "slow";
 export type FulfillmentMethod = "internal" | "external";
@@ -45,9 +45,23 @@ export interface Profile {
 export interface Supplier {
   id: string;
   user_id: string | null;
-  name: string;
+  display_name: string;
   contact_info: string | null;
   balance: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SupplierPrice {
+  id: string;
+  supplier_id: string;
+  service_type: "coins" | "fut_rank" | "rivals" | "sbc_challenge";
+  platform: "PS" | "PC";
+  price_usd: number;
+  rank_level: number | null;
+  division_level: number | null;
+  is_fast_service: boolean;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -71,6 +85,19 @@ export interface Order {
   raw_webhook: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface DeletedOrder extends Order {
+  deleted_at: string;
+  deleted_by: string | null;
+}
+
+export interface DeletedOrderItem extends OrderItem {
+  // Uses same fields as OrderItem
+}
+
+export interface DeletedOrderWithItems extends DeletedOrder {
+  deleted_order_items: DeletedOrderItem[];
 }
 
 export interface OrderItem {
@@ -112,11 +139,20 @@ export interface OrderItem {
   notes: string | null;
   customer_note: string | null;
 
-  // Challenges
+  // SBC (group of challenges — paid per challenge)
   challenges_count: number | null;
 
   // Coins delivery tracking
   coins_delivered_k: number | null;
+
+  // Service targets for pricing
+  rank_target: number | null; // FUT Rank target (1-6)
+  division_target: number | null; // Rivals division target (1-10)
+  is_fast_service: boolean; // Whether this is fast/priority service
+
+  // SBC dual costs (coins + service)
+  sbc_coins_cost: number | null; // Cost for coins recharge in SBC orders (USD)
+  sbc_service_cost: number | null; // Cost for challenge completion service (USD)
 
   created_at: string;
   updated_at: string;

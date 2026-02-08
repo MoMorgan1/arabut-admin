@@ -20,25 +20,46 @@ export async function updateSystemSettingAction(key: string, value: string) {
   if (!key?.trim()) return { error: "Key is required" };
   if (!value?.trim()) return { error: "Value is required" };
 
-  // Use admin client to bypass RLS for system_settings upsert
+  // Use admin client to bypass RLS for system_settings
   const { createAdminClient } = await import("@/lib/supabase/admin");
   const adminSupabase = createAdminClient();
 
-  const { error } = await adminSupabase
-    .from("system_settings")
-    .upsert(
-      {
-        key,
-        value: value.trim(),
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "key" }
-    );
+  const trimmedValue = value.trim();
+  const now = new Date().toISOString();
 
-  if (error) return { error: error.message };
+  // Try update first
+  const { data: updated, error: updateErr } = await adminSupabase
+    .from("system_settings")
+    .update({ value: trimmedValue, updated_at: now })
+    .eq("key", key)
+    .select("key")
+    .single();
+
+  if (updateErr && updateErr.code === "PGRST116") {
+    // Row doesn't exist — insert it
+    const { error: insertErr } = await adminSupabase
+      .from("system_settings")
+      .insert({ key, value: trimmedValue, updated_at: now });
+
+    if (insertErr) return { error: "Insert failed: " + insertErr.message };
+  } else if (updateErr) {
+    return { error: "Update failed: " + updateErr.message };
+  }
+
+  // Verify the save actually worked
+  const { data: verify } = await adminSupabase
+    .from("system_settings")
+    .select("value")
+    .eq("key", key)
+    .single();
+
+  if (verify?.value !== trimmedValue) {
+    return { error: `Save verification failed. Expected "${trimmedValue}" but got "${verify?.value}"` };
+  }
+
   revalidatePath("/settings");
   revalidatePath("/orders");
-  return { success: true };
+  return { success: true, savedValue: verify.value };
 }
 
 // =================== Pricing Rules ===================
@@ -144,28 +165,73 @@ export async function inviteUserAction(params: {
   const { createAdminClient } = await import("@/lib/supabase/admin");
   const adminSupabase = createAdminClient();
 
+  // Check if user already exists with this email
+  const { data: existingUsers } = await adminSupabase.auth.admin.listUsers();
+  const existingUser = existingUsers?.users?.find(
+    (u) => u.email?.toLowerCase() === params.email.trim().toLowerCase()
+  );
+  if (existingUser) {
+    return { error: `A user with email "${params.email}" already exists` };
+  }
+
   const { data: newUser, error: authError } = await adminSupabase.auth.admin.createUser({
-    email: params.email,
+    email: params.email.trim(),
     password: params.password,
     email_confirm: true,
     user_metadata: {
-      full_name: params.full_name,
+      full_name: params.full_name.trim(),
       role: params.role,
     },
   });
 
-  if (authError) return { error: authError.message };
-  if (!newUser?.user) return { error: "Failed to create user" };
+  if (authError) {
+    console.error("Auth createUser error:", authError);
+    return { error: `Failed to create user: ${authError.message}` };
+  }
+  if (!newUser?.user) return { error: "Failed to create user — no user returned" };
 
-  // The trigger should auto-create profile, but let's ensure the role is correct
-  await adminSupabase
+  // Ensure profile exists with correct role (trigger may or may not have created it)
+  const { error: profileErr } = await adminSupabase
     .from("profiles")
-    .upsert({
-      id: newUser.user.id,
-      full_name: params.full_name,
-      role: params.role,
+    .upsert(
+      {
+        id: newUser.user.id,
+        full_name: params.full_name.trim(),
+        role: params.role,
+        is_active: true,
+      },
+      { onConflict: "id" }
+    );
+
+  if (profileErr) {
+    console.error("Profile upsert error:", profileErr);
+    // User was created in auth but profile failed — still report success with warning
+    revalidatePath("/settings");
+    return {
+      success: true,
+      userId: newUser.user.id,
+      warning: `User created but profile setup had an issue: ${profileErr.message}. The profile may need manual correction.`,
+    };
+  }
+
+  if (params.role === "supplier") {
+    const { error: supplierErr } = await adminSupabase.from("suppliers").insert({
+      display_name: params.full_name.trim(),
+      user_id: newUser.user.id,
+      balance: 0,
       is_active: true,
     });
+    if (supplierErr) {
+      console.error("Supplier create error:", supplierErr);
+      revalidatePath("/settings");
+      return {
+        success: true,
+        userId: newUser.user.id,
+        warning: `User created but supplier setup had an issue: ${supplierErr.message}. The supplier may need manual correction.`,
+      };
+    }
+    revalidatePath("/suppliers");
+  }
 
   revalidatePath("/settings");
   return { success: true, userId: newUser.user.id };
@@ -234,27 +300,33 @@ export async function createSupplierAccountAction(params: {
 
   // Create auth user
   const { data: newUser, error: authError } = await adminSupabase.auth.admin.createUser({
-    email: params.email,
+    email: params.email.trim(),
     password: params.password,
     email_confirm: true,
     user_metadata: {
-      full_name: params.full_name,
+      full_name: params.full_name.trim(),
       role: "supplier",
     },
   });
 
-  if (authError) return { error: authError.message };
-  if (!newUser?.user) return { error: "Failed to create account" };
+  if (authError) {
+    console.error("Supplier createUser error:", authError);
+    return { error: `Failed to create account: ${authError.message}` };
+  }
+  if (!newUser?.user) return { error: "Failed to create account — no user returned" };
 
   // Ensure profile
   await adminSupabase
     .from("profiles")
-    .upsert({
-      id: newUser.user.id,
-      full_name: params.full_name,
-      role: "supplier",
-      is_active: true,
-    });
+    .upsert(
+      {
+        id: newUser.user.id,
+        full_name: params.full_name.trim(),
+        role: "supplier",
+        is_active: true,
+      },
+      { onConflict: "id" }
+    );
 
   // Link supplier record to user
   await adminSupabase

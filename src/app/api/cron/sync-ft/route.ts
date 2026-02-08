@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getOrderStatusBulk, mapFTStatusToOurStatus } from "@/lib/fut-transfer/api";
+import { getOrderStatusBulk, mapFTStatusToOurStatus, eurToUsd } from "@/lib/fut-transfer/api";
 import { chunkArray } from "@/lib/utils/helpers";
 import { getWorstStatus } from "@/lib/utils/helpers";
 import { ACCOUNT_CHECK_NOTES } from "@/lib/utils/constants";
@@ -58,20 +58,23 @@ export async function GET(request: NextRequest) {
           res.economyState ?? ""
         );
 
+        // Convert toPay from EUR to USD
+        const cronActualCostUsd = res.toPay != null ? await eurToUsd(res.toPay) : null;
+
         const updatePayload: Record<string, unknown> = {
           status: newStatus,
-          ft_status: res.status,
+          ft_status: res.economyStateLong || res.economyState || res.status,
           ft_last_synced: new Date().toISOString(),
-          actual_cost: res.toPay ?? null,
+          actual_cost: cronActualCostUsd,
           updated_at: new Date().toISOString(),
         };
 
-        // Auto-track coins delivery progress from FUT Transfer
+        // Auto-track coins delivery — "amount" = K delivered so far
         if (res.amountOrdered != null && res.amountOrdered > 0) {
           if (res.status === "finished") {
             updatePayload.coins_delivered_k = res.amountOrdered;
-          } else if (res.coinsUsed != null && res.coinsUsed > 0) {
-            updatePayload.coins_delivered_k = Math.round((res.coinsUsed / 1000) * 100) / 100;
+          } else if (res.amount != null && res.amount > 0) {
+            updatePayload.coins_delivered_k = res.amount;
           }
         }
 

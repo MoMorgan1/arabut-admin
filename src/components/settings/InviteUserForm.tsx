@@ -34,6 +34,9 @@ export default function InviteUserForm() {
     });
     setLoading(false);
     if (result?.error) { toast.error(result.error); return; }
+    if (result?.warning) {
+      toast.warning(result.warning);
+    }
     toast.success(`Account created for ${fullName}`);
     setOpen(false);
     setEmail(""); setFullName(""); setRole("employee"); setPassword("");

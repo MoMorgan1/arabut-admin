@@ -31,6 +31,82 @@ function getLast7Days() {
 }
 
 export default async function DashboardPage() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  let role: "admin" | "employee" | "supplier" | null = null;
+
+  if (user) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .single();
+    role = profile?.role ?? null;
+  }
+
+  if (role === "supplier" && user) {
+    const { data: supplier } = await supabase
+      .from("suppliers")
+      .select("id, balance")
+      .eq("user_id", user.id)
+      .single();
+
+    let assignedCount = 0;
+    let completedCount = 0;
+    let pendingCount = 0;
+
+    if (supplier?.id) {
+      const { data: items } = await supabase
+        .from("order_items")
+        .select("status")
+        .eq("supplier_id", supplier.id);
+
+      assignedCount = items?.length ?? 0;
+      completedCount =
+        items?.filter((i) => i.status === "completed" || i.status === "completed_comp").length ?? 0;
+      pendingCount =
+        items?.filter((i) =>
+          ["new", "processing", "shipping", "in_progress", "credentials_sent"].includes(i.status)
+        ).length ?? 0;
+    }
+
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold">Dashboard</h1>
+          <p className="text-sm text-muted-foreground">Your assigned work overview</p>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Assigned Items</CardTitle>
+            </CardHeader>
+            <CardContent className="text-2xl font-bold">{assignedCount}</CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Completed Items</CardTitle>
+            </CardHeader>
+            <CardContent className="text-2xl font-bold">{completedCount}</CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Pending Items</CardTitle>
+            </CardHeader>
+            <CardContent className="text-2xl font-bold">{pendingCount}</CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Balance</CardTitle>
+            </CardHeader>
+            <CardContent className="text-2xl font-bold">{supplier?.balance ?? 0}</CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
   let ordersCount = 0;
   let revenue = 0;
   let completed = 0;
@@ -39,7 +115,6 @@ export default async function DashboardPage() {
   let orderTypesData: { name: string; value: number }[] = [];
 
   try {
-    const supabase = await createClient();
     const { start, end } = getMonthBounds();
 
     // Orders count (all time for total, or we can do month)

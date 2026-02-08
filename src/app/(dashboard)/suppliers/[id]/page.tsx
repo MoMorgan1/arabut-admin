@@ -4,11 +4,13 @@ import { createClient } from "@/lib/supabase/server";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft } from "lucide-react";
-import { formatSAR } from "@/lib/utils/formatters";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ArrowLeft, DollarSign, History } from "lucide-react";
+import { formatUSD } from "@/lib/utils/formatters";
 import TransactionLog from "@/components/suppliers/TransactionLog";
 import EditSupplierForm from "@/components/suppliers/EditSupplierForm";
 import AddTransactionForm from "@/components/suppliers/AddTransactionForm";
+import SupplierPricingGrid from "@/components/suppliers/SupplierPricingGrid";
 
 export default async function SupplierDetailPage({
   params,
@@ -33,6 +35,13 @@ export default async function SupplierDetailPage({
     .order("created_at", { ascending: false })
     .limit(50);
 
+  const { data: prices } = await supabase
+    .from("supplier_prices")
+    .select("*")
+    .eq("supplier_id", id)
+    .order("service_type")
+    .order("platform");
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-2">
@@ -48,7 +57,7 @@ export default async function SupplierDetailPage({
         <CardHeader>
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <CardTitle className="text-xl">{supplier.name}</CardTitle>
+              <CardTitle className="text-xl">{supplier.display_name}</CardTitle>
               {supplier.contact_info && (
                 <p className="text-sm text-muted-foreground mt-1">
                   {supplier.contact_info}
@@ -60,7 +69,7 @@ export default async function SupplierDetailPage({
                 <Badge variant="secondary">Inactive</Badge>
               )}
               <span className="text-2xl font-bold">
-                {formatSAR(supplier.balance)}
+                {formatUSD(supplier.balance)}
               </span>
               <span className="text-sm text-muted-foreground">Balance</span>
               <EditSupplierForm supplier={supplier} />
@@ -70,14 +79,43 @@ export default async function SupplierDetailPage({
         </CardHeader>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Transaction Log</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <TransactionLog transactions={transactions ?? []} />
-        </CardContent>
-      </Card>
+      <Tabs defaultValue="pricing" className="space-y-4">
+        <TabsList className="grid w-full max-w-md grid-cols-2">
+          <TabsTrigger value="pricing" className="gap-2">
+            <DollarSign className="h-4 w-4" />
+            Pricing
+          </TabsTrigger>
+          <TabsTrigger value="transactions" className="gap-2">
+            <History className="h-4 w-4" />
+            Transactions
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="pricing">
+          <Card>
+            <CardHeader>
+              <CardTitle>Pricing Rules</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <SupplierPricingGrid
+                supplierId={supplier.id}
+                existingPrices={prices ?? []}
+              />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="transactions">
+          <Card>
+            <CardHeader>
+              <CardTitle>Transaction Log</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <TransactionLog transactions={transactions ?? []} />
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

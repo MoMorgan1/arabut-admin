@@ -63,7 +63,7 @@ CREATE TABLE IF NOT EXISTS suppliers (
 -- 3. ORDERS (parent — one per Salla order)
 -- =============================================================
 DO $$ BEGIN
-  CREATE TYPE order_type AS ENUM ('coins', 'fut_rank', 'challenges', 'raffles', 'other');
+  CREATE TYPE order_type AS ENUM ('coins', 'fut', 'sbc', 'rivales', 'other');
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 

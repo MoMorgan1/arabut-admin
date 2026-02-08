@@ -25,6 +25,7 @@ interface OrdersTableProps {
   selectedOrderIds: Set<string>;
   onSelectionChange: (id: string, checked: boolean) => void;
   onSelectAll: (checked: boolean) => void;
+  allowSelection?: boolean;
 }
 
 export default function OrdersTable({
@@ -32,6 +33,7 @@ export default function OrdersTable({
   selectedOrderIds,
   onSelectionChange,
   onSelectAll,
+  allowSelection = true,
 }: OrdersTableProps) {
   const router = useRouter();
 
@@ -51,16 +53,19 @@ export default function OrdersTable({
       <Table>
         <TableHeader>
           <TableRow className="bg-muted/40">
-            <TableHead className="w-[44px]">
-              <Checkbox
-                checked={allSelected}
-                onCheckedChange={(c) => onSelectAll(!!c)}
-              />
-            </TableHead>
+            {allowSelection && (
+              <TableHead className="w-[44px]">
+                <Checkbox
+                  checked={allSelected}
+                  onCheckedChange={(c) => onSelectAll(!!c)}
+                />
+              </TableHead>
+            )}
             <TableHead>Order #</TableHead>
             <TableHead>Customer</TableHead>
+            <TableHead>EA Email</TableHead>
             <TableHead>Type</TableHead>
-            <TableHead>Qty</TableHead>
+            <TableHead>Qty / Delivered</TableHead>
             <TableHead>Amount</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Date</TableHead>
@@ -70,9 +75,18 @@ export default function OrdersTable({
           {orders.map((order) => {
             const itemCount = order.order_items?.length ?? 0;
             const itemTypes = [...new Set(order.order_items.map((i) => i.item_type))];
-            const totalCoinsK = order.order_items
-              .filter((i) => i.item_type === "coins")
-              .reduce((sum, i) => sum + (i.coins_amount_k ?? 0), 0);
+            const coinsItems = order.order_items.filter((i) => i.item_type === "coins");
+            const totalCoinsK = coinsItems.reduce((sum, i) => sum + (i.coins_amount_k ?? 0), 0);
+            const totalDeliveredK = coinsItems.reduce((sum, i) => sum + (i.coins_delivered_k ?? 0), 0);
+            const hasDelivery = totalCoinsK > 0 && coinsItems.some((i) => i.coins_delivered_k != null && i.coins_delivered_k > 0);
+            const deliveryPct = totalCoinsK > 0 ? Math.min(100, Math.round((totalDeliveredK / totalCoinsK) * 100)) : 0;
+
+            // Get EA emails from order items (deduplicated)
+            const eaEmails = [...new Set(
+              order.order_items
+                .map((i) => i.ea_email)
+                .filter((e): e is string => !!e)
+            )];
 
             // Show all unique item statuses
             const uniqueStatuses = [...new Set(order.order_items.map((i) => i.status))];
@@ -83,12 +97,14 @@ export default function OrdersTable({
                 className="hover:bg-muted/30 cursor-pointer"
                 onClick={() => router.push(`/orders/${order.id}`)}
               >
-                <TableCell onClick={(e) => e.stopPropagation()}>
-                  <Checkbox
-                    checked={selectedOrderIds.has(order.id)}
-                    onCheckedChange={(c) => onSelectionChange(order.id, !!c)}
-                  />
-                </TableCell>
+                {allowSelection && (
+                  <TableCell onClick={(e) => e.stopPropagation()}>
+                    <Checkbox
+                      checked={selectedOrderIds.has(order.id)}
+                      onCheckedChange={(c) => onSelectionChange(order.id, !!c)}
+                    />
+                  </TableCell>
+                )}
                 <TableCell className="font-mono text-sm">
                   #{order.salla_order_id}
                 </TableCell>
@@ -102,6 +118,19 @@ export default function OrdersTable({
                       </p>
                     )}
                   </div>
+                </TableCell>
+                <TableCell className="text-sm">
+                  {eaEmails.length > 0 ? (
+                    <div className="space-y-0.5">
+                      {eaEmails.map((email) => (
+                        <p key={email} className="text-xs font-mono text-muted-foreground truncate max-w-[180px]" title={email}>
+                          {email}
+                        </p>
+                      ))}
+                    </div>
+                  ) : (
+                    <span className="text-muted-foreground">—</span>
+                  )}
                 </TableCell>
                 <TableCell>
                   <div className="flex gap-1 flex-wrap">
@@ -118,7 +147,32 @@ export default function OrdersTable({
                   </div>
                 </TableCell>
                 <TableCell className="text-sm">
-                  {totalCoinsK > 0 ? formatCoins(totalCoinsK) : "—"}
+                  {totalCoinsK > 0 ? (
+                    <div className="space-y-1">
+                      <span>{formatCoins(totalCoinsK)}</span>
+                      {hasDelivery && (
+                        <div className="flex items-center gap-1.5">
+                          <div className="h-1.5 w-16 rounded-full bg-muted overflow-hidden">
+                            <div
+                              className={`h-full rounded-full transition-all ${
+                                deliveryPct >= 100
+                                  ? "bg-emerald-500"
+                                  : deliveryPct > 0
+                                  ? "bg-blue-500"
+                                  : "bg-muted"
+                              }`}
+                              style={{ width: `${deliveryPct}%` }}
+                            />
+                          </div>
+                          <span className="text-xs text-muted-foreground whitespace-nowrap">
+                            {formatCoins(totalDeliveredK)} ({deliveryPct}%)
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    "—"
+                  )}
                 </TableCell>
                 <TableCell className="text-sm">{formatSAR(order.salla_total_sar)}</TableCell>
                 <TableCell>

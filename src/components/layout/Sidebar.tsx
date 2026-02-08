@@ -13,6 +13,7 @@ import {
   ChevronLeft,
   ChevronRight,
   LogOut,
+  DollarSign,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -25,14 +26,31 @@ import {
 } from "@/components/ui/tooltip";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
+import { useUserRole } from "@/hooks/useUserRole";
 
 const NAV_ITEMS = [
   { label: "Dashboard", href: "/", icon: LayoutDashboard },
   { label: "Orders", href: "/orders", icon: ClipboardList },
   { label: "Financials", href: "/financials", icon: Wallet },
   { label: "Suppliers", href: "/suppliers", icon: Users },
+  { label: "Pricing", href: "/pricing", icon: DollarSign },
   { label: "Notifications", href: "/notifications", icon: Bell },
   { label: "Settings", href: "/settings", icon: Settings },
+];
+
+const SUPPLIER_ITEMS = [
+  { label: "Dashboard", href: "/", icon: LayoutDashboard },
+  { label: "Orders", href: "/orders", icon: ClipboardList },
+  { label: "My Pricing", href: "/my-pricing", icon: DollarSign },
+  { label: "Balance", href: "/balance", icon: Wallet },
+  { label: "Notifications", href: "/notifications", icon: Bell },
+];
+
+const EMPLOYEE_ITEMS = [
+  { label: "Dashboard", href: "/", icon: LayoutDashboard },
+  { label: "Orders", href: "/orders", icon: ClipboardList },
+  { label: "Suppliers", href: "/suppliers", icon: Users },
+  { label: "Notifications", href: "/notifications", icon: Bell },
 ];
 
 interface SidebarProps {
@@ -43,6 +61,7 @@ interface SidebarProps {
 export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
+  const { role } = useUserRole();
 
   async function handleLogout() {
     const supabase = createClient();
@@ -59,6 +78,9 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
     if (href === "/") return pathname === "/";
     return pathname.startsWith(href);
   }
+
+  const navItems =
+    role === "supplier" ? SUPPLIER_ITEMS : role === "employee" ? EMPLOYEE_ITEMS : NAV_ITEMS;
 
   return (
     <TooltipProvider delayDuration={0}>
@@ -83,7 +105,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
         {/* Navigation */}
         <ScrollArea className="flex-1 py-3">
           <nav className="flex flex-col gap-0.5 px-2">
-            {NAV_ITEMS.map((item) => {
+            {navItems.map((item) => {
               const Icon = item.icon;
               const active = isActive(item.href);
               const linkContent = (

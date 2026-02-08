@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import OrderDetail, { type OrderDetailData } from "@/components/orders/OrderDetail";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -12,6 +13,7 @@ export default async function OrderDetailPage({
 }) {
   const { id } = await params;
   const supabase = await createClient();
+  const adminSupabase = createAdminClient();
 
   const { data: order, error } = await supabase
     .from("orders")
@@ -24,6 +26,7 @@ export default async function OrderDetailPage({
   }
 
   // Fetch items, suppliers, and global exchange rate in parallel
+  // Use admin client for system_settings to bypass RLS and always get the real value
   const [{ data: orderItems }, { data: suppliers }, { data: rateSetting }] =
     await Promise.all([
       supabase
@@ -35,8 +38,8 @@ export default async function OrderDetailPage({
         .from("suppliers")
         .select("*")
         .eq("is_active", true)
-        .order("name"),
-      supabase
+        .order("display_name"),
+      adminSupabase
         .from("system_settings")
         .select("value")
         .eq("key", "exchange_rate")

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -16,8 +16,16 @@ interface ExchangeRateSettingProps {
 export default function ExchangeRateSetting({ currentRate }: ExchangeRateSettingProps) {
   const router = useRouter();
   const [rate, setRate] = useState(currentRate);
+  const [savedRate, setSavedRate] = useState(currentRate);
   const [loading, setLoading] = useState(false);
-  const hasChanged = rate !== currentRate;
+
+  // Sync state when server props change (after router.refresh)
+  useEffect(() => {
+    setRate(currentRate);
+    setSavedRate(currentRate);
+  }, [currentRate]);
+
+  const hasChanged = rate !== savedRate;
 
   async function handleSave() {
     const parsed = parseFloat(rate);
@@ -34,7 +42,8 @@ export default function ExchangeRateSetting({ currentRate }: ExchangeRateSetting
       toast.error(result.error);
       return;
     }
-    toast.success("Exchange rate updated");
+    toast.success(`Exchange rate saved: ${result.savedValue}`);
+    setSavedRate(rate);
     router.refresh();
   }
 

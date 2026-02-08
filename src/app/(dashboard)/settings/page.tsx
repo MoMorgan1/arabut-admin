@@ -1,11 +1,12 @@
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Settings, Users, DollarSign, Key, Database } from "lucide-react";
+import { Settings, Users, DollarSign, Key, Database, Trash2 } from "lucide-react";
 import DataMigrationUpload from "@/components/settings/DataMigrationUpload";
 import ExchangeRateSetting from "@/components/settings/ExchangeRateSetting";
 import PricingRuleForm from "@/components/settings/PricingRuleForm";
@@ -13,9 +14,11 @@ import PricingRuleActions from "@/components/settings/PricingRuleActions";
 import InviteUserForm from "@/components/settings/InviteUserForm";
 import UserActions from "@/components/settings/UserActions";
 import LinkSupplierAccount from "@/components/settings/LinkSupplierAccount";
+import TrashOrdersList from "@/components/settings/TrashOrdersList";
 
 export default async function SettingsPage() {
   const supabase = await createClient();
+  const adminSupabase = createAdminClient();
 
   const { data: pricingRules } = await supabase
     .from("pricing_rules")
@@ -23,23 +26,33 @@ export default async function SettingsPage() {
     .order("platform")
     .order("min_amount_k");
 
-  const { data: profiles } = await supabase
+  const { data: profiles } = await adminSupabase
     .from("profiles")
     .select("id, full_name, role, is_active, created_at")
     .order("full_name");
 
-  const { data: suppliers } = await supabase
+  const { data: suppliers } = await adminSupabase
     .from("suppliers")
-    .select("id, name, user_id")
-    .order("name");
+    .select("id, display_name, user_id")
+    .order("display_name");
 
-  const { data: exchangeRateSetting } = await supabase
+  // Use admin client to bypass RLS — ensures we always read the actual saved value
+  const { data: exchangeRateSetting } = await adminSupabase
     .from("system_settings")
     .select("value")
     .eq("key", "exchange_rate")
     .single();
 
   const exchangeRate = exchangeRateSetting?.value ?? "3.75";
+
+  // Fetch deleted orders (admin only)
+  const { data: deletedOrders } = await adminSupabase
+    .from("deleted_orders")
+    .select(`
+      *,
+      deleted_order_items (*)
+    `)
+    .order("deleted_at", { ascending: false });
 
   return (
     <div className="space-y-6">
@@ -49,7 +62,7 @@ export default async function SettingsPage() {
       </div>
 
       <Tabs defaultValue="pricing" className="space-y-4">
-        <TabsList className="grid w-full max-w-2xl grid-cols-4">
+        <TabsList className="grid w-full max-w-2xl grid-cols-5">
           <TabsTrigger value="pricing" className="gap-2">
             <DollarSign className="h-4 w-4" />
             Pricing
@@ -57,6 +70,10 @@ export default async function SettingsPage() {
           <TabsTrigger value="users" className="gap-2">
             <Users className="h-4 w-4" />
             Users
+          </TabsTrigger>
+          <TabsTrigger value="trash" className="gap-2">
+            <Trash2 className="h-4 w-4" />
+            Trash
           </TabsTrigger>
           <TabsTrigger value="migration" className="gap-2">
             <Database className="h-4 w-4" />
@@ -131,6 +148,21 @@ export default async function SettingsPage() {
                   </Table>
                 </div>
               )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* =================== Trash (Deleted Orders) =================== */}
+        <TabsContent value="trash" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Deleted Orders</CardTitle>
+              <p className="text-sm text-muted-foreground mt-1">
+                Orders that have been moved to trash. You can restore or permanently delete them.
+              </p>
+            </CardHeader>
+            <CardContent>
+              <TrashOrdersList deletedOrders={deletedOrders ?? []} />
             </CardContent>
           </Card>
         </TabsContent>

@@ -6,10 +6,21 @@ import { Users } from "lucide-react";
 
 export default async function SuppliersPage() {
   const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  let role: "admin" | "employee" | "supplier" | null = null;
+  if (user) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .single();
+    role = profile?.role ?? null;
+  }
+
   const { data: suppliers } = await supabase
     .from("suppliers")
     .select("*")
-    .order("name");
+    .order("display_name");
 
   return (
     <div className="space-y-6">
@@ -18,7 +29,7 @@ export default async function SuppliersPage() {
           <Users className="h-6 w-6 text-primary" />
           <h1 className="text-xl font-bold">Suppliers</h1>
         </div>
-        <AddSupplierForm />
+        {role === "admin" && <AddSupplierForm />}
       </div>
 
       {!suppliers?.length ? (

@@ -7,7 +7,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { formatSAR, formatDateTime } from "@/lib/utils/formatters";
+import { formatUSD, formatDateTime } from "@/lib/utils/formatters";
 import type { SupplierTransaction } from "@/types/database";
 
 const TYPE_LABELS: Record<string, string> = {
@@ -63,9 +63,9 @@ export default function TransactionLog({ transactions }: TransactionLogProps) {
                 }
               >
                 {tx.type === "deposit" || tx.type === "refund" ? "+" : "-"}
-                {formatSAR(tx.amount)}
+                {formatUSD(tx.amount)}
               </TableCell>
-              <TableCell>{formatSAR(tx.balance_after)}</TableCell>
+              <TableCell>{formatUSD(tx.balance_after)}</TableCell>
               <TableCell className="text-muted-foreground text-sm max-w-[200px] truncate">
                 {tx.note ?? "—"}
               </TableCell>

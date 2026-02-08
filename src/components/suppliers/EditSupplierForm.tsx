@@ -21,7 +21,7 @@ export default function EditSupplierForm({ supplier }: EditSupplierFormProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [name, setName] = useState(supplier.name);
+  const [name, setName] = useState(supplier.display_name);
   const [contactInfo, setContactInfo] = useState(supplier.contact_info ?? "");
   const [isActive, setIsActive] = useState(supplier.is_active);
 
@@ -47,7 +47,7 @@ export default function EditSupplierForm({ supplier }: EditSupplierFormProps) {
       onOpenChange={(o) => {
         setOpen(o);
         if (!o) {
-          setName(supplier.name);
+          setName(supplier.display_name);
           setContactInfo(supplier.contact_info ?? "");
           setIsActive(supplier.is_active);
         }

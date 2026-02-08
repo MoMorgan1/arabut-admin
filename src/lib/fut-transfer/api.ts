@@ -5,6 +5,7 @@ import type {
   FTOrderStatusResponse,
   FTBulkStatusResponse,
 } from "@/types/api";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 const FT_BASE_URL = "https://futtransfer.top";
 
@@ -121,6 +122,86 @@ export async function getOrderStatusBulk(params: {
     orderIDs: params.orderIDs,
     ...(params.isMotherID ? { isMotherID: 1 } : {}),
   });
+}
+
+// === User Stats (for EUR/USD exchange rate) ===
+
+interface FTUserStatsResponse {
+  currency: string;
+  usdExchange: string;
+  [key: string]: unknown;
+}
+
+export async function getUserStats(): Promise<FTUserStatsResponse> {
+  return ftPost<FTUserStatsResponse>("/getUserStats.php", {});
+}
+
+// Fallback rate if FT API is unreachable
+const DEFAULT_EUR_USD_RATE = 1.18;
+// Cache duration: 24 hours in ms
+const RATE_CACHE_DURATION_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Get the EUR→USD exchange rate, cached in system_settings.
+ * Refreshes from FUT Transfer /getUserStats.php if older than 24 hours.
+ */
+export async function getEurToUsdRate(): Promise<number> {
+  const supabase = createAdminClient();
+
+  // Check cached rate
+  const { data: rateSetting } = await supabase
+    .from("system_settings")
+    .select("value, updated_at")
+    .eq("key", "ft_eur_usd_rate")
+    .single();
+
+  if (rateSetting) {
+    const age = Date.now() - new Date(rateSetting.updated_at).getTime();
+    if (age < RATE_CACHE_DURATION_MS) {
+      const cached = parseFloat(rateSetting.value);
+      if (!isNaN(cached) && cached > 0) return cached;
+    }
+  }
+
+  // Fetch fresh rate from FT API
+  try {
+    const stats = await getUserStats();
+    const rate = parseFloat(stats.usdExchange);
+    if (isNaN(rate) || rate <= 0) {
+      console.warn("FT getUserStats returned invalid usdExchange:", stats.usdExchange);
+      return rateSetting ? parseFloat(rateSetting.value) || DEFAULT_EUR_USD_RATE : DEFAULT_EUR_USD_RATE;
+    }
+
+    // Cache the rate in system_settings
+    await supabase
+      .from("system_settings")
+      .upsert(
+        {
+          key: "ft_eur_usd_rate",
+          value: String(rate),
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "key" }
+      );
+
+    return rate;
+  } catch (err) {
+    console.error("Failed to fetch EUR/USD rate from FT:", err);
+    // Return cached value or default
+    if (rateSetting) {
+      const cached = parseFloat(rateSetting.value);
+      if (!isNaN(cached) && cached > 0) return cached;
+    }
+    return DEFAULT_EUR_USD_RATE;
+  }
+}
+
+/**
+ * Convert EUR amount to USD using the cached exchange rate.
+ */
+export async function eurToUsd(eurAmount: number): Promise<number> {
+  const rate = await getEurToUsdRate();
+  return Math.round(eurAmount * rate * 100) / 100;
 }
 
 // === FUT Transfer Status Mapping ===

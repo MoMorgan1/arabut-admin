@@ -12,15 +12,15 @@ export function detectProductType(sku: string, productName: string): OrderType {
   if (skuUpper.includes("COIN")) return "coins";
 
   // Service detection from product name
-  if (nameLower.includes("فوت") || nameLower.includes("fut")) return "fut_rank";
-  if (nameLower.includes("رايفلز") || nameLower.includes("rivals")) return "raffles";
+  if (nameLower.includes("فوت") || nameLower.includes("fut")) return "fut";
+  if (nameLower.includes("رايفلز") || nameLower.includes("rivals") || nameLower.includes("rivales")) return "rivales";
   if (
     nameLower.includes("مهام") ||
     nameLower.includes("objectives") ||
     nameLower.includes("تحدي") ||
     nameLower.includes("sbc")
   )
-    return "challenges";
+    return "sbc";
 
   return "other";
 }

@@ -51,9 +51,13 @@ export interface FTOrderResponse {
 
 export interface FTOrderStatusResponse {
   status: string;
+  simplifiedStatus: string;
   accountCheck: string;
+  accountCheckLong: string;
   economyState: string;
+  economyStateLong: string;
   amountOrdered: number;
+  /** Coins delivered so far (in K) — use this for delivery tracking */
   amount: number;
   coinsUsed: number;
   coinsCustomerAccount: number;
@@ -61,7 +65,7 @@ export interface FTOrderStatusResponse {
   sellerReceives: number;
   externalOrderID: string;
   wasAborted: 0 | 1;
-  knownClub: string;
+  knownClub: string | null;
   cached: 0 | 1;
 }
 

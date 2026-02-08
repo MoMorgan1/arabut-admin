@@ -12,20 +12,38 @@ import {
   Bell,
   LogOut,
   X,
+  DollarSign,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { useUserRole } from "@/hooks/useUserRole";
 
 const NAV_ITEMS = [
   { label: "Dashboard", href: "/", icon: LayoutDashboard },
   { label: "Orders", href: "/orders", icon: ClipboardList },
   { label: "Financials", href: "/financials", icon: Wallet },
   { label: "Suppliers", href: "/suppliers", icon: Users },
+  { label: "Pricing", href: "/pricing", icon: DollarSign },
   { label: "Notifications", href: "/notifications", icon: Bell },
   { label: "Settings", href: "/settings", icon: Settings },
+];
+
+const SUPPLIER_ITEMS = [
+  { label: "Dashboard", href: "/", icon: LayoutDashboard },
+  { label: "Orders", href: "/orders", icon: ClipboardList },
+  { label: "My Pricing", href: "/my-pricing", icon: DollarSign },
+  { label: "Balance", href: "/balance", icon: Wallet },
+  { label: "Notifications", href: "/notifications", icon: Bell },
+];
+
+const EMPLOYEE_ITEMS = [
+  { label: "Dashboard", href: "/", icon: LayoutDashboard },
+  { label: "Orders", href: "/orders", icon: ClipboardList },
+  { label: "Suppliers", href: "/suppliers", icon: Users },
+  { label: "Notifications", href: "/notifications", icon: Bell },
 ];
 
 interface MobileNavProps {
@@ -37,6 +55,7 @@ export default function MobileNav({ open, onClose }: MobileNavProps) {
   const pathname = usePathname();
   const router = useRouter();
   const supabase = createClient();
+  const { role } = useUserRole();
 
   function isActive(href: string) {
     if (href === "/") return pathname === "/";
@@ -55,6 +74,9 @@ export default function MobileNav({ open, onClose }: MobileNavProps) {
   }
 
   if (!open) return null;
+
+  const navItems =
+    role === "supplier" ? SUPPLIER_ITEMS : role === "employee" ? EMPLOYEE_ITEMS : NAV_ITEMS;
 
   return (
     <>
@@ -81,7 +103,7 @@ export default function MobileNav({ open, onClose }: MobileNavProps) {
 
         {/* Navigation */}
         <nav className="flex-1 flex flex-col gap-0.5 p-3">
-          {NAV_ITEMS.map((item) => {
+          {navItems.map((item) => {
             const Icon = item.icon;
             const active = isActive(item.href);
             return (

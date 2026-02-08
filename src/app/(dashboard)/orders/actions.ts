@@ -194,7 +194,7 @@ export async function syncFTStatusAction(orderItemId: string) {
       return { error: "This item is not linked to FUT Transfer" };
     }
 
-    const { getOrderStatus, mapFTStatusToOurStatus } = await import(
+    const { getOrderStatus, mapFTStatusToOurStatus, eurToUsd } = await import(
       "@/lib/fut-transfer/api"
     );
     const res = await getOrderStatus({ orderID: item.ft_order_id });
@@ -205,24 +205,23 @@ export async function syncFTStatusAction(orderItemId: string) {
       res.economyState ?? ""
     );
 
+    // Convert toPay from EUR to USD
+    const actionActualCostUsd = res.toPay != null ? await eurToUsd(res.toPay) : null;
+
     const updatePayload: Record<string, unknown> = {
       status: newStatus,
-      ft_status: res.status,
+      ft_status: res.economyStateLong || res.economyState || res.status,
       ft_last_synced: new Date().toISOString(),
-      actual_cost: res.toPay ?? null,
+      actual_cost: actionActualCostUsd,
       updated_at: new Date().toISOString(),
     };
 
-    // Auto-track coins delivery progress from FUT Transfer
-    // coinsUsed = coins delivered so far (in absolute coins, divide by 1000 for K)
-    // amountOrdered = total K ordered
+    // Auto-track coins delivery — "amount" = K delivered so far
     if (res.amountOrdered != null && res.amountOrdered > 0) {
       if (res.status === "finished") {
-        // Fully delivered — set delivered = ordered
         updatePayload.coins_delivered_k = res.amountOrdered;
-      } else if (res.coinsUsed != null && res.coinsUsed > 0) {
-        // Partially delivered — coinsUsed is in absolute coins (÷1000 = K)
-        updatePayload.coins_delivered_k = Math.round((res.coinsUsed / 1000) * 100) / 100;
+      } else if (res.amount != null && res.amount > 0) {
+        updatePayload.coins_delivered_k = res.amount;
       }
     }
 
@@ -282,7 +281,7 @@ export async function syncFTStatusAction(orderItemId: string) {
   }
 }
 
-// ===== Update order item details (cost, supplier, notes, challenges) =====
+// ===== Update order item details (cost, supplier, notes, SBC count) =====
 export async function updateOrderItemAction(
   orderItemId: string,
   params: {
@@ -292,6 +291,11 @@ export async function updateOrderItemAction(
     notes?: string;
     challenges_count?: number | null;
     coins_delivered_k?: number | null;
+    rank_target?: number | null;
+    division_target?: number | null;
+    is_fast_service?: boolean;
+    sbc_coins_cost?: number | null;
+    sbc_service_cost?: number | null;
   }
 ) {
   const supabase = await createClient();
@@ -309,6 +313,11 @@ export async function updateOrderItemAction(
   if (params.notes !== undefined) updateData.notes = params.notes?.trim() || null;
   if (params.challenges_count !== undefined) updateData.challenges_count = params.challenges_count;
   if (params.coins_delivered_k !== undefined) updateData.coins_delivered_k = params.coins_delivered_k;
+  if (params.rank_target !== undefined) updateData.rank_target = params.rank_target;
+  if (params.division_target !== undefined) updateData.division_target = params.division_target;
+  if (params.is_fast_service !== undefined) updateData.is_fast_service = params.is_fast_service;
+  if (params.sbc_coins_cost !== undefined) updateData.sbc_coins_cost = params.sbc_coins_cost;
+  if (params.sbc_service_cost !== undefined) updateData.sbc_service_cost = params.sbc_service_cost;
 
   const { error } = await supabase
     .from("order_items")
@@ -326,5 +335,196 @@ export async function updateOrderItemAction(
 
   revalidatePath("/orders");
   if (item) revalidatePath(`/orders/${item.order_id}`);
+  return { success: true };
+}
+
+// ===== Move order to trash (admin only, move to deleted_orders table) =====
+export async function moveOrderToTrashAction(orderId: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Unauthorized" };
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+
+  if (profile?.role !== "admin") {
+    return { error: "Only admins can move orders to trash" };
+  }
+
+  if (!orderId?.trim()) return { error: "Order ID is required" };
+
+  // Fetch the order and its items
+  const { data: order, error: fetchError } = await supabase
+    .from("orders")
+    .select("*")
+    .eq("id", orderId)
+    .single();
+
+  if (fetchError || !order) {
+    return { error: "Order not found" };
+  }
+
+  const { data: orderItems, error: itemsError } = await supabase
+    .from("order_items")
+    .select("*")
+    .eq("order_id", orderId);
+
+  if (itemsError) {
+    return { error: "Failed to fetch order items" };
+  }
+
+  // Insert into deleted_orders
+  const { error: insertOrderError } = await supabase
+    .from("deleted_orders")
+    .insert({
+      ...order,
+      deleted_at: new Date().toISOString(),
+      deleted_by: user.id,
+    });
+
+  if (insertOrderError) {
+    return { error: `Failed to move order to trash: ${insertOrderError.message}` };
+  }
+
+  // Insert into deleted_order_items
+  if (orderItems && orderItems.length > 0) {
+    const { error: insertItemsError } = await supabase
+      .from("deleted_order_items")
+      .insert(orderItems);
+
+    if (insertItemsError) {
+      // Rollback: delete from deleted_orders
+      await supabase.from("deleted_orders").delete().eq("id", orderId);
+      return { error: `Failed to move order items: ${insertItemsError.message}` };
+    }
+  }
+
+  // Delete from original tables (cascade will delete order_items)
+  const { error: deleteError } = await supabase
+    .from("orders")
+    .delete()
+    .eq("id", orderId);
+
+  if (deleteError) {
+    return { error: `Failed to delete order: ${deleteError.message}` };
+  }
+
+  revalidatePath("/orders");
+  revalidatePath(`/orders/${orderId}`);
+  revalidatePath("/settings/trash");
+  return { success: true };
+}
+
+// ===== Restore order from trash (admin only, move back to orders table) =====
+export async function restoreOrderAction(orderId: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Unauthorized" };
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+
+  if (profile?.role !== "admin") {
+    return { error: "Only admins can restore orders" };
+  }
+
+  if (!orderId?.trim()) return { error: "Order ID is required" };
+
+  // Fetch from deleted_orders
+  const { data: deletedOrder, error: fetchError } = await supabase
+    .from("deleted_orders")
+    .select("*")
+    .eq("id", orderId)
+    .single();
+
+  if (fetchError || !deletedOrder) {
+    return { error: "Deleted order not found" };
+  }
+
+  const { data: deletedItems, error: itemsError } = await supabase
+    .from("deleted_order_items")
+    .select("*")
+    .eq("order_id", orderId);
+
+  if (itemsError) {
+    return { error: "Failed to fetch deleted order items" };
+  }
+
+  // Remove deleted metadata fields before inserting back
+  const { deleted_at, deleted_by, ...orderData } = deletedOrder;
+
+  // Insert back into orders
+  const { error: insertOrderError } = await supabase
+    .from("orders")
+    .insert(orderData);
+
+  if (insertOrderError) {
+    return { error: `Failed to restore order: ${insertOrderError.message}` };
+  }
+
+  // Insert back into order_items
+  if (deletedItems && deletedItems.length > 0) {
+    const { error: insertItemsError } = await supabase
+      .from("order_items")
+      .insert(deletedItems);
+
+    if (insertItemsError) {
+      // Rollback
+      await supabase.from("orders").delete().eq("id", orderId);
+      return { error: `Failed to restore order items: ${insertItemsError.message}` };
+    }
+  }
+
+  // Delete from deleted tables (cascade will delete deleted_order_items)
+  const { error: deleteError } = await supabase
+    .from("deleted_orders")
+    .delete()
+    .eq("id", orderId);
+
+  if (deleteError) {
+    return { error: `Failed to remove from trash: ${deleteError.message}` };
+  }
+
+  revalidatePath("/orders");
+  revalidatePath(`/orders/${orderId}`);
+  revalidatePath("/settings/trash");
+  return { success: true };
+}
+
+// ===== Permanently delete order from trash (admin only) =====
+export async function permanentlyDeleteOrderAction(orderId: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Unauthorized" };
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+
+  if (profile?.role !== "admin") {
+    return { error: "Only admins can permanently delete orders" };
+  }
+
+  if (!orderId?.trim()) return { error: "Order ID is required" };
+
+  // Permanently delete from deleted_orders (cascade will delete items)
+  const { error } = await supabase
+    .from("deleted_orders")
+    .delete()
+    .eq("id", orderId);
+
+  if (error) {
+    return { error: `Failed to permanently delete: ${error.message}` };
+  }
+
+  revalidatePath("/settings/trash");
   return { success: true };
 }

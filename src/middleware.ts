@@ -36,6 +36,7 @@ export async function middleware(request: NextRequest) {
 
   const isLoginPage = request.nextUrl.pathname === "/login";
   const isApiRoute = request.nextUrl.pathname.startsWith("/api");
+  const pathname = request.nextUrl.pathname;
 
   // Allow API routes to pass through
   if (isApiRoute) {
@@ -54,6 +55,38 @@ export async function middleware(request: NextRequest) {
     const url = request.nextUrl.clone();
     url.pathname = "/";
     return NextResponse.redirect(url);
+  }
+
+  if (user) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .single();
+    const role = profile?.role;
+
+    if (role === "employee") {
+      const blocked = ["/financials", "/settings", "/balance", "/pricing"];
+      if (blocked.some((path) => pathname.startsWith(path))) {
+        const url = request.nextUrl.clone();
+        url.pathname = "/";
+        return NextResponse.redirect(url);
+      }
+    }
+
+    if (role === "supplier") {
+      const allowed =
+        pathname === "/" ||
+        pathname.startsWith("/orders") ||
+        pathname.startsWith("/balance") ||
+        pathname.startsWith("/my-pricing") ||
+        pathname.startsWith("/notifications");
+      if (!allowed) {
+        const url = request.nextUrl.clone();
+        url.pathname = "/";
+        return NextResponse.redirect(url);
+      }
+    }
   }
 
   return supabaseResponse;
