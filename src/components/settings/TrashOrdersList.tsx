@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { formatDate, formatSAR } from "@/lib/utils/helpers";
+import { formatDate, formatSAR } from "@/lib/utils/formatters";
 import {
   Table,
   TableBody,
