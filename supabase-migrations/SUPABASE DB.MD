@@ -141,6 +141,8 @@ productType = 'other'   → Manual review + WhatsApp alert
 | `rank_achieved` | `text` | YES | الرانك اللي فعلاً وصلناه |
 | `rank_urgency` | `enum` | YES | `urgent` (مستعجل 24 ساعة) / `anytime` (عادي) |
 
+> **Note:** `rank_achieved` is filled by the supplier when the order is completed. It is used to calculate the supplier's payment for the achieved rank (via `supplier_prices`). Both admin and supplier can view and edit it in the order item detail.
+
 ### SBC Fields (item_type = 'sbc')
 
 | Column | Type | Nullable | Description |

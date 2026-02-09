@@ -281,7 +281,7 @@ export async function syncFTStatusAction(orderItemId: string) {
   }
 }
 
-// ===== Update order item details (cost, supplier, notes, SBC count) =====
+// ===== Update order item details (cost, supplier, notes, SBC count, rank achieved, backup codes) =====
 export async function updateOrderItemAction(
   orderItemId: string,
   params: {
@@ -292,10 +292,18 @@ export async function updateOrderItemAction(
     challenges_count?: number | null;
     coins_delivered_k?: number | null;
     rank_target?: number | null;
+    rank_achieved?: string | null;
+    rank_urgency?: "urgent" | "anytime" | null;
     division_target?: number | null;
     is_fast_service?: boolean;
     sbc_coins_cost?: number | null;
     sbc_service_cost?: number | null;
+    ea_backup1?: string | null;
+    ea_backup2?: string | null;
+    ea_backup3?: string | null;
+    ps_backup1?: string | null;
+    ps_backup2?: string | null;
+    ps_backup3?: string | null;
   }
 ) {
   const supabase = await createClient();
@@ -314,10 +322,18 @@ export async function updateOrderItemAction(
   if (params.challenges_count !== undefined) updateData.challenges_count = params.challenges_count;
   if (params.coins_delivered_k !== undefined) updateData.coins_delivered_k = params.coins_delivered_k;
   if (params.rank_target !== undefined) updateData.rank_target = params.rank_target;
+  if (params.rank_achieved !== undefined) updateData.rank_achieved = params.rank_achieved?.trim() || null;
+  if (params.rank_urgency !== undefined) updateData.rank_urgency = params.rank_urgency || null;
   if (params.division_target !== undefined) updateData.division_target = params.division_target;
   if (params.is_fast_service !== undefined) updateData.is_fast_service = params.is_fast_service;
   if (params.sbc_coins_cost !== undefined) updateData.sbc_coins_cost = params.sbc_coins_cost;
   if (params.sbc_service_cost !== undefined) updateData.sbc_service_cost = params.sbc_service_cost;
+  if (params.ea_backup1 !== undefined) updateData.ea_backup1 = params.ea_backup1?.trim() || null;
+  if (params.ea_backup2 !== undefined) updateData.ea_backup2 = params.ea_backup2?.trim() || null;
+  if (params.ea_backup3 !== undefined) updateData.ea_backup3 = params.ea_backup3?.trim() || null;
+  if (params.ps_backup1 !== undefined) updateData.ps_backup1 = params.ps_backup1?.trim() || null;
+  if (params.ps_backup2 !== undefined) updateData.ps_backup2 = params.ps_backup2?.trim() || null;
+  if (params.ps_backup3 !== undefined) updateData.ps_backup3 = params.ps_backup3?.trim() || null;
 
   const { error } = await supabase
     .from("order_items")

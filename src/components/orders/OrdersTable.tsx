@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
   Table,
@@ -15,6 +16,7 @@ import StatusBadge from "./StatusBadge";
 import { ORDER_TYPE_LABELS } from "@/lib/utils/constants";
 import { formatSAR, formatDate, formatCoins } from "@/lib/utils/formatters";
 import type { Order, OrderItem } from "@/types/database";
+import { ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 
 export interface OrderRowData extends Order {
   order_items: OrderItem[];
@@ -28,6 +30,9 @@ interface OrdersTableProps {
   allowSelection?: boolean;
 }
 
+type SortColumn = "id" | "customer" | "amount" | "date" | "status";
+type SortDirection = "asc" | "desc";
+
 export default function OrdersTable({
   orders,
   selectedOrderIds,
@@ -36,6 +41,59 @@ export default function OrdersTable({
   allowSelection = true,
 }: OrdersTableProps) {
   const router = useRouter();
+  const [sortColumn, setSortColumn] = useState<SortColumn>("id");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
+
+  const handleSort = (column: SortColumn) => {
+    if (sortColumn === column) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      setSortColumn(column);
+      setSortDirection("desc");
+    }
+  };
+
+  const sortedOrders = useMemo(() => {
+    const sorted = [...orders];
+    
+    sorted.sort((a, b) => {
+      let aValue: any;
+      let bValue: any;
+
+      switch (sortColumn) {
+        case "id":
+          aValue = parseInt(a.salla_order_id);
+          bValue = parseInt(b.salla_order_id);
+          break;
+        case "customer":
+          aValue = a.customer_name.toLowerCase();
+          bValue = b.customer_name.toLowerCase();
+          break;
+        case "amount":
+          aValue = a.salla_total_sar ?? 0;
+          bValue = b.salla_total_sar ?? 0;
+          break;
+        case "date":
+          aValue = new Date(a.order_date).getTime();
+          bValue = new Date(b.order_date).getTime();
+          break;
+        case "status":
+          const aStatuses = a.order_items.map((i) => i.status).join(",");
+          const bStatuses = b.order_items.map((i) => i.status).join(",");
+          aValue = aStatuses;
+          bValue = bStatuses;
+          break;
+        default:
+          return 0;
+      }
+
+      if (aValue < bValue) return sortDirection === "asc" ? -1 : 1;
+      if (aValue > bValue) return sortDirection === "asc" ? 1 : -1;
+      return 0;
+    });
+
+    return sorted;
+  }, [orders, sortColumn, sortDirection]);
 
   if (orders.length === 0) {
     return (
@@ -47,6 +105,17 @@ export default function OrdersTable({
   }
 
   const allSelected = orders.length > 0 && orders.every((o) => selectedOrderIds.has(o.id));
+
+  const SortIcon = ({ column }: { column: SortColumn }) => {
+    if (sortColumn !== column) {
+      return <ArrowUpDown className="ml-1 h-3.5 w-3.5 text-muted-foreground" />;
+    }
+    return sortDirection === "asc" ? (
+      <ArrowUp className="ml-1 h-3.5 w-3.5" />
+    ) : (
+      <ArrowDown className="ml-1 h-3.5 w-3.5" />
+    );
+  };
 
   return (
     <div className="rounded-lg border border-border overflow-auto">
@@ -61,18 +130,58 @@ export default function OrdersTable({
                 />
               </TableHead>
             )}
-            <TableHead>Order #</TableHead>
-            <TableHead>Customer</TableHead>
+            <TableHead>
+              <button
+                onClick={() => handleSort("id")}
+                className="flex items-center hover:text-foreground transition-colors"
+              >
+                Order #
+                <SortIcon column="id" />
+              </button>
+            </TableHead>
+            <TableHead>
+              <button
+                onClick={() => handleSort("customer")}
+                className="flex items-center hover:text-foreground transition-colors"
+              >
+                Customer
+                <SortIcon column="customer" />
+              </button>
+            </TableHead>
             <TableHead>EA Email</TableHead>
             <TableHead>Type</TableHead>
             <TableHead>Qty / Delivered</TableHead>
-            <TableHead>Amount</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Date</TableHead>
+            <TableHead>
+              <button
+                onClick={() => handleSort("amount")}
+                className="flex items-center hover:text-foreground transition-colors"
+              >
+                Amount
+                <SortIcon column="amount" />
+              </button>
+            </TableHead>
+            <TableHead>
+              <button
+                onClick={() => handleSort("status")}
+                className="flex items-center hover:text-foreground transition-colors"
+              >
+                Status
+                <SortIcon column="status" />
+              </button>
+            </TableHead>
+            <TableHead>
+              <button
+                onClick={() => handleSort("date")}
+                className="flex items-center hover:text-foreground transition-colors"
+              >
+                Date
+                <SortIcon column="date" />
+              </button>
+            </TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {orders.map((order) => {
+          {sortedOrders.map((order) => {
             const itemCount = order.order_items?.length ?? 0;
             const itemTypes = [...new Set(order.order_items.map((i) => i.item_type))];
             const coinsItems = order.order_items.filter((i) => i.item_type === "coins");

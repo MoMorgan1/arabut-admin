@@ -7,18 +7,24 @@
 CREATE TABLE IF NOT EXISTS deleted_orders (
   id UUID PRIMARY KEY,
   salla_order_id TEXT NOT NULL,
-  salla_reference_id TEXT,
-  customer_name TEXT NOT NULL,
+  salla_ref_id TEXT,
+  order_date TIMESTAMPTZ NOT NULL,
+  customer_name TEXT,
   customer_email TEXT,
   customer_phone TEXT,
-  customer_phone_code TEXT NOT NULL,
+  customer_phone_code TEXT NOT NULL DEFAULT '966',
+  platform TEXT CHECK (platform IN ('PS', 'PC')),
+  order_type TEXT NOT NULL DEFAULT 'coins',
   payment_method TEXT,
-  salla_total_sar NUMERIC(10,2),
+  salla_total_sar NUMERIC(10,2) NOT NULL DEFAULT 0,
   exchange_rate NUMERIC(10,4),
-  status TEXT NOT NULL,
-  order_date TIMESTAMPTZ NOT NULL,
-  notes TEXT,
   settled_amount NUMERIC(10,2),
+  total_cost NUMERIC(10,2) NOT NULL DEFAULT 0,
+  status TEXT NOT NULL DEFAULT 'new',
+  ban_status TEXT NOT NULL DEFAULT 'none',
+  refund_amount NUMERIC(10,2) NOT NULL DEFAULT 0,
+  assigned_employee UUID,
+  notes TEXT,
   raw_webhook JSONB,
   deleted_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   deleted_by UUID REFERENCES auth.users(id),
@@ -34,56 +40,52 @@ COMMENT ON COLUMN deleted_orders.deleted_by IS 'Admin user who moved it to trash
 CREATE TABLE IF NOT EXISTS deleted_order_items (
   id UUID PRIMARY KEY,
   order_id UUID NOT NULL REFERENCES deleted_orders(id) ON DELETE CASCADE,
-  item_type TEXT NOT NULL,
-  product_name TEXT NOT NULL,
   sku TEXT,
-  status TEXT NOT NULL,
-  
-  -- EA Credentials
-  ea_email TEXT,
-  ea_password TEXT,
-  backup_code_1 TEXT,
-  backup_code_2 TEXT,
-  backup_code_3 TEXT,
+  product_name TEXT NOT NULL,
+  item_type TEXT NOT NULL,
+  quantity INTEGER NOT NULL DEFAULT 1,
+  unit_price_sar NUMERIC(10,2) NOT NULL DEFAULT 0,
   platform TEXT CHECK (platform IN ('PS', 'PC')),
-  
-  -- Coins specific
-  coins_amount_k NUMERIC(10,2),
-  shipping_type TEXT CHECK (shipping_type IN ('fast', 'slow')),
-  max_price_eur NUMERIC(10,2),
-  top_up_enabled INTEGER,
-  fulfillment_method TEXT CHECK (fulfillment_method IN ('internal', 'external')),
-  
-  -- FUT Transfer
-  ft_order_id TEXT,
-  ft_status TEXT,
-  ft_last_synced TIMESTAMPTZ,
-  
-  -- Cost
+  status TEXT NOT NULL DEFAULT 'new',
   expected_cost NUMERIC(10,2),
   actual_cost NUMERIC(10,2),
-  
-  -- Supplier
   supplier_id UUID,
-  
-  -- Notes
   notes TEXT,
   customer_note TEXT,
   
+  -- Account Credentials
+  ea_email TEXT,
+  ea_password TEXT,
+  ea_backup1 TEXT,
+  ea_backup2 TEXT,
+  ea_backup3 TEXT,
+  ps_backup1 TEXT,
+  ps_backup2 TEXT,
+  ps_backup3 TEXT,
+  
+  -- Coins specific
+  coins_amount_k INTEGER,
+  shipping_type TEXT,
+  transfer_method TEXT,
+  max_price_eur NUMERIC(10,2),
+  top_up_enabled INTEGER,
+  fulfillment_method TEXT,
+  coins_delivered_k NUMERIC(10,2) DEFAULT 0,
+  
+  -- FUT Transfer API
+  ft_order_id TEXT,
+  ft_status TEXT,
+  ft_account_check TEXT,
+  ft_economy_state TEXT,
+  ft_last_synced TIMESTAMPTZ,
+  
+  -- Service fields
+  rank_target TEXT,
+  rank_achieved TEXT,
+  rank_urgency TEXT,
+  
   -- SBC
   challenges_count INTEGER,
-  
-  -- Coins delivery
-  coins_delivered_k NUMERIC(10,2),
-  
-  -- Service targets
-  rank_target INTEGER CHECK (rank_target BETWEEN 1 AND 6),
-  division_target INTEGER CHECK (division_target BETWEEN 1 AND 10),
-  is_fast_service BOOLEAN DEFAULT false,
-  
-  -- SBC dual costs
-  sbc_coins_cost NUMERIC(10,2),
-  sbc_service_cost NUMERIC(10,2),
   
   created_at TIMESTAMPTZ NOT NULL,
   updated_at TIMESTAMPTZ NOT NULL

@@ -56,6 +56,8 @@ import {
   CreditCard,
   Radio,
   Trash2,
+  Zap,
+  Clock,
 } from "lucide-react";
 
 const TERMINAL_STATUSES = ["completed", "completed_comp", "cancelled", "refunded"];
@@ -374,6 +376,7 @@ export default function OrderDetail({
           <OrderItemCard
             key={item.id}
             item={item}
+            orderDate={order.order_date}
             exchangeRate={exchangeRate}
             suppliers={suppliers}
             allowAdminFields={allowAdminFields}
@@ -384,13 +387,227 @@ export default function OrderDetail({
   );
 }
 
+// Service details (FUT/Rivals): target rank, urgency, achieved rank, payment for achieved
+function ServiceDetailsSection({
+  item,
+  orderDate,
+  exchangeRate,
+  allowAdminFields,
+}: {
+  item: OrderItem & { status_log?: OrderStatusLog[] };
+  orderDate?: string;
+  exchangeRate: number;
+  allowAdminFields: boolean;
+}) {
+  const [paymentForAchieved, setPaymentForAchieved] = useState<number | null>(null);
+  const [loadingPayment, setLoadingPayment] = useState(false);
+  const [timeRemaining, setTimeRemaining] = useState<string>("");
+  const isFut = item.item_type === "fut";
+  const isRivals = item.item_type === "rivales";
+
+  // Calculate time remaining for urgent orders (24 hours from submission)
+  useEffect(() => {
+    if (item.rank_urgency !== "urgent" || !orderDate) {
+      setTimeRemaining("");
+      return;
+    }
+
+    const updateTimeRemaining = () => {
+      const submittedAt = new Date(orderDate);
+      const deadline = new Date(submittedAt.getTime() + 24 * 60 * 60 * 1000); // +24 hours
+      const now = new Date();
+      const diffMs = deadline.getTime() - now.getTime();
+
+      if (diffMs <= 0) {
+        const overdueMins = Math.floor(Math.abs(diffMs) / (1000 * 60));
+        const overdueHours = Math.floor(overdueMins / 60);
+        const overdueDays = Math.floor(overdueHours / 24);
+        
+        if (overdueDays > 0) {
+          setTimeRemaining(`${overdueDays}d ${overdueHours % 24}h overdue`);
+        } else if (overdueHours > 0) {
+          setTimeRemaining(`${overdueHours}h ${overdueMins % 60}m overdue`);
+        } else {
+          setTimeRemaining(`${overdueMins}m overdue`);
+        }
+      } else {
+        const remainingMins = Math.floor(diffMs / (1000 * 60));
+        const remainingHours = Math.floor(remainingMins / 60);
+        
+        if (remainingHours > 0) {
+          setTimeRemaining(`${remainingHours}h ${remainingMins % 60}m remaining`);
+        } else {
+          setTimeRemaining(`${remainingMins}m remaining`);
+        }
+      }
+    };
+
+    updateTimeRemaining();
+    const interval = setInterval(updateTimeRemaining, 60000); // Update every minute
+
+    return () => clearInterval(interval);
+  }, [item.rank_urgency, orderDate]);
+
+  useEffect(() => {
+    if (!item.supplier_id || !item.rank_achieved?.trim()) {
+      setPaymentForAchieved(null);
+      return;
+    }
+    let cancelled = false;
+    setLoadingPayment(true);
+    (async () => {
+      try {
+        const { calculateSupplierCost } = await import("@/app/(dashboard)/suppliers/pricing-actions");
+        const match = item.rank_achieved!.match(/\d+/);
+        const level = match ? parseInt(match[0], 10) : null;
+        if (level == null) {
+          if (!cancelled) setPaymentForAchieved(null);
+          return;
+        }
+        const supplierId = item.supplier_id;
+        if (!supplierId) return;
+        const isUrgent = item.rank_urgency === "urgent";
+        const cost = await calculateSupplierCost({
+          supplier_id: supplierId,
+          item_type: isFut ? "fut_rank" : "rivals",
+          platform: (item.platform ?? "PS") as "PS" | "PC",
+          rank_level: isFut ? level : undefined,
+          division_level: isRivals ? level : undefined,
+          is_fast_service: isUrgent,
+        });
+        if (!cancelled) setPaymentForAchieved(cost ?? null);
+      } catch {
+        if (!cancelled) setPaymentForAchieved(null);
+      } finally {
+        if (!cancelled) setLoadingPayment(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [item.supplier_id, item.rank_achieved, item.rank_urgency, item.platform, isFut, isRivals]);
+
+  const targetLabel = isFut
+    ? item.rank_target != null
+      ? `Rank ${item.rank_target}`
+      : "—"
+    : item.division_target != null
+      ? `Division ${item.division_target}`
+      : "—";
+
+  return (
+    <div className="rounded-lg border border-border bg-muted/20 p-3 space-y-2">
+      <p className="text-xs font-semibold text-muted-foreground">Service Details</p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2 text-sm">
+        <div>
+          <span className="text-xs text-muted-foreground block">Target Rank</span>
+          <span className="font-medium">{targetLabel}</span>
+        </div>
+        <div>
+          <span className="text-xs text-muted-foreground block">Urgency</span>
+          <div className="space-y-1">
+            <span className="font-medium flex items-center gap-1">
+              {item.rank_urgency === "urgent" ? (
+                <><Zap className="h-3.5 w-3.5 text-amber-500" /> Urgent (24hrs)</>
+              ) : (
+                <><Clock className="h-3.5 w-3.5 text-muted-foreground" /> Anytime</>
+              )}
+            </span>
+            {timeRemaining && (
+              <span className={`text-xs font-medium ${timeRemaining.includes("overdue") ? "text-red-500" : "text-amber-600"}`}>
+                {timeRemaining}
+              </span>
+            )}
+          </div>
+        </div>
+        <div>
+          <span className="text-xs text-muted-foreground block">Achieved Rank</span>
+          <span className="font-medium">{item.rank_achieved || "—"}</span>
+        </div>
+        {(allowAdminFields || item.supplier_id) && (item.rank_achieved || loadingPayment) && (
+          <div>
+            <span className="text-xs text-muted-foreground block">Payment for Achieved</span>
+            {loadingPayment ? (
+              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+            ) : paymentForAchieved != null ? (
+              <span className="font-medium">{formatUSD(paymentForAchieved)}</span>
+            ) : (
+              <span className="text-muted-foreground">—</span>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// SBC: challenge name, count, costs (visible to admin and supplier)
+function SBCDetailsSection({
+  item,
+  exchangeRate,
+  allowAdminFields,
+}: {
+  item: OrderItem & { status_log?: OrderStatusLog[] };
+  exchangeRate: number;
+  allowAdminFields: boolean;
+}) {
+  const hasCosts = item.sbc_coins_cost != null || item.sbc_service_cost != null;
+  const totalCost =
+    item.sbc_coins_cost != null && item.sbc_service_cost != null
+      ? item.sbc_coins_cost + item.sbc_service_cost
+      : null;
+
+  return (
+    <div className="rounded-lg border border-border bg-muted/20 p-3 space-y-2">
+      <p className="text-xs font-semibold text-muted-foreground">SBC Challenge Details</p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2 text-sm">
+        <div>
+          <span className="text-xs text-muted-foreground block">Challenge Name</span>
+          <span className="font-medium">{item.product_name || "—"}</span>
+        </div>
+        <div>
+          <span className="text-xs text-muted-foreground block">Number of Challenges</span>
+          <span className="font-medium">{item.challenges_count ?? "—"}</span>
+        </div>
+        {allowAdminFields && hasCosts && (
+          <>
+            <div>
+              <span className="text-xs text-muted-foreground block">Coins Cost</span>
+              <span className="font-medium">{formatUSD(item.sbc_coins_cost ?? 0)}</span>
+            </div>
+            <div>
+              <span className="text-xs text-muted-foreground block">Service Cost</span>
+              <span className="font-medium">
+                {item.challenges_count != null && item.challenges_count > 0 && item.sbc_service_cost != null
+                  ? `${formatUSD(item.sbc_service_cost)} (${item.challenges_count} × ${formatUSD(item.sbc_service_cost / item.challenges_count)})`
+                  : formatUSD(item.sbc_service_cost ?? 0)}
+              </span>
+            </div>
+            {totalCost != null && (
+              <div className="sm:col-span-2">
+                <span className="text-xs text-muted-foreground block">Total</span>
+                <span className="font-medium font-bold">{formatUSD(totalCost)}</span>
+                <span className="text-xs text-muted-foreground ml-1">
+                  ({formatSAR(totalCost * exchangeRate)})
+                </span>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function OrderItemCard({
   item,
+  orderDate,
   exchangeRate,
   suppliers,
   allowAdminFields,
 }: {
   item: OrderItem & { status_log: OrderStatusLog[] };
+  orderDate?: string;
   exchangeRate: number;
   suppliers: Supplier[];
   allowAdminFields: boolean;
@@ -596,7 +813,14 @@ function OrderItemCard({
           </div>
         )}
 
-        {/* EA Credentials box */}
+        {/* Order submission time */}
+        {orderDate && (
+          <div className="text-xs text-muted-foreground">
+            Order Submitted: {formatDate(orderDate)}
+          </div>
+        )}
+
+        {/* EA Account Credentials */}
         {item.ea_email && (
           <div className="rounded-lg border border-border bg-muted/20 p-3 space-y-2">
             <p className="text-xs font-semibold text-muted-foreground">EA Account Credentials</p>
@@ -611,18 +835,55 @@ function OrderItemCard({
                   <span className="font-mono select-all">{item.ea_password}</span>
                 </div>
               )}
-              {(item.backup_code_1 || item.backup_code_2 || item.backup_code_3) && (
-                <div>
-                  <span className="text-xs text-muted-foreground block">Backup Codes</span>
-                  <span className="font-mono select-all">
-                    {[item.backup_code_1, item.backup_code_2, item.backup_code_3]
-                      .filter(Boolean)
-                      .join(" / ")}
-                  </span>
+              {(item.ea_backup1 || item.ea_backup2 || item.ea_backup3 || (item as OrderItem & { backup_code_1?: string; backup_code_2?: string; backup_code_3?: string }).backup_code_1 || (item as OrderItem & { backup_code_1?: string; backup_code_2?: string; backup_code_3?: string }).backup_code_2 || (item as OrderItem & { backup_code_3?: string }).backup_code_3) && (
+                <div className="sm:col-span-2 md:col-span-3 space-y-1">
+                  <span className="text-xs text-muted-foreground block">EA Backup Codes</span>
+                  <div className="flex flex-wrap gap-3 font-mono text-sm">
+                    {(item.ea_backup1 || (item as OrderItem & { backup_code_1?: string }).backup_code_1) && (
+                      <span className="select-all">EA 1: {item.ea_backup1 ?? (item as OrderItem & { backup_code_1?: string }).backup_code_1}</span>
+                    )}
+                    {(item.ea_backup2 || (item as OrderItem & { backup_code_2?: string }).backup_code_2) && (
+                      <span className="select-all">EA 2: {item.ea_backup2 ?? (item as OrderItem & { backup_code_2?: string }).backup_code_2}</span>
+                    )}
+                    {(item.ea_backup3 || (item as OrderItem & { backup_code_3?: string }).backup_code_3) && (
+                      <span className="select-all">EA 3: {item.ea_backup3 ?? (item as OrderItem & { backup_code_3?: string }).backup_code_3}</span>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
           </div>
+        )}
+
+        {/* PlayStation Backup Codes (PS only) */}
+        {item.platform === "PS" && (item.ps_backup1 || item.ps_backup2 || item.ps_backup3) && (
+          <div className="rounded-lg border border-border bg-muted/20 p-3 space-y-2">
+            <p className="text-xs font-semibold text-muted-foreground">PlayStation Backup Codes</p>
+            <div className="flex flex-wrap gap-3 font-mono text-sm">
+              {item.ps_backup1 && <span className="select-all">PS 1: {item.ps_backup1}</span>}
+              {item.ps_backup2 && <span className="select-all">PS 2: {item.ps_backup2}</span>}
+              {item.ps_backup3 && <span className="select-all">PS 3: {item.ps_backup3}</span>}
+            </div>
+          </div>
+        )}
+
+        {/* Service Details (FUT / Rivals) — visible to admin and supplier */}
+        {(item.item_type === "fut" || item.item_type === "rivales") && (
+          <ServiceDetailsSection
+            item={item}
+            orderDate={orderDate}
+            exchangeRate={exchangeRate}
+            allowAdminFields={allowAdminFields}
+          />
+        )}
+
+        {/* SBC Challenge Details — visible to admin and supplier */}
+        {isSBC && (
+          <SBCDetailsSection
+            item={item}
+            exchangeRate={exchangeRate}
+            allowAdminFields={allowAdminFields}
+          />
         )}
 
         {/* Item details grid */}
@@ -889,10 +1150,10 @@ function EditOrderItemDialog({
       : ""
   );
   const [rankTarget, setRankTarget] = useState(
-    item.rank_target != null ? String(item.rank_target) : ""
+    item.rank_target != null ? String(item.rank_target) : "none"
   );
   const [divisionTarget, setDivisionTarget] = useState(
-    item.division_target != null ? String(item.division_target) : ""
+    item.division_target != null ? String(item.division_target) : "none"
   );
   const [isFastService, setIsFastService] = useState(item.is_fast_service ?? false);
   const [sbcCoinsCost, setSbcCoinsCost] = useState(
@@ -901,6 +1162,16 @@ function EditOrderItemDialog({
   const [sbcServiceCost, setSbcServiceCost] = useState(
     item.sbc_service_cost != null ? String(item.sbc_service_cost) : ""
   );
+  const [rankAchieved, setRankAchieved] = useState(item.rank_achieved ?? "");
+  const [rankUrgency, setRankUrgency] = useState<"urgent" | "anytime" | "none">(
+    item.rank_urgency ?? "none"
+  );
+  const [eaBackup1, setEaBackup1] = useState(item.ea_backup1 ?? "");
+  const [eaBackup2, setEaBackup2] = useState(item.ea_backup2 ?? "");
+  const [eaBackup3, setEaBackup3] = useState(item.ea_backup3 ?? "");
+  const [psBackup1, setPsBackup1] = useState(item.ps_backup1 ?? "");
+  const [psBackup2, setPsBackup2] = useState(item.ps_backup2 ?? "");
+  const [psBackup3, setPsBackup3] = useState(item.ps_backup3 ?? "");
 
   async function handleSave() {
     setLoading(true);
@@ -912,17 +1183,33 @@ function EditOrderItemDialog({
       challenges_count?: number | null;
       coins_delivered_k?: number | null;
       rank_target?: number | null;
+      rank_achieved?: string | null;
+      rank_urgency?: "urgent" | "anytime" | null;
       division_target?: number | null;
       is_fast_service?: boolean;
       sbc_coins_cost?: number | null;
       sbc_service_cost?: number | null;
+      ea_backup1?: string | null;
+      ea_backup2?: string | null;
+      ea_backup3?: string | null;
+      ps_backup1?: string | null;
+      ps_backup2?: string | null;
+      ps_backup3?: string | null;
     } = {
       notes: itemNotes,
       challenges_count: challengesCount ? parseInt(challengesCount) : null,
       coins_delivered_k: coinsDelivered ? parseFloat(coinsDelivered) : null,
-      rank_target: rankTarget ? parseInt(rankTarget) : null,
-      division_target: divisionTarget ? parseInt(divisionTarget) : null,
+      rank_target: rankTarget && rankTarget !== "none" ? parseInt(rankTarget) : null,
+      rank_achieved: rankAchieved.trim() || null,
+      rank_urgency: rankUrgency === "none" ? null : (rankUrgency as "urgent" | "anytime"),
+      division_target: divisionTarget && divisionTarget !== "none" ? parseInt(divisionTarget) : null,
       is_fast_service: isFastService,
+      ea_backup1: eaBackup1.trim() || null,
+      ea_backup2: eaBackup2.trim() || null,
+      ea_backup3: eaBackup3.trim() || null,
+      ps_backup1: psBackup1.trim() || null,
+      ps_backup2: psBackup2.trim() || null,
+      ps_backup3: psBackup3.trim() || null,
     };
 
     if (allowAdminFields) {
@@ -1096,7 +1383,7 @@ function EditOrderItemDialog({
                     <SelectValue placeholder="Select rank" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">— None —</SelectItem>
+                    <SelectItem value="none">— None —</SelectItem>
                     <SelectItem value="1">Rank 1</SelectItem>
                     <SelectItem value="2">Rank 2</SelectItem>
                     <SelectItem value="3">Rank 3</SelectItem>
@@ -1129,7 +1416,7 @@ function EditOrderItemDialog({
                   <SelectValue placeholder="Select division" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">— None —</SelectItem>
+                  <SelectItem value="none">— None —</SelectItem>
                   {Array.from({ length: 10 }, (_, i) => i + 1).map((div) => (
                     <SelectItem key={div} value={String(div)}>
                       Division {div}
@@ -1137,6 +1424,75 @@ function EditOrderItemDialog({
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+          )}
+
+          {/* Achieved Rank & Urgency (FUT / Rivals) — supplier can set achieved rank */}
+          {(item.item_type === "fut" || item.item_type === "rivales") && (
+            <div className="space-y-3">
+              <div>
+                <Label>Achieved Rank</Label>
+                <Input
+                  value={rankAchieved}
+                  onChange={(e) => setRankAchieved(e.target.value)}
+                  placeholder={item.item_type === "fut" ? "e.g. Rank 2" : "e.g. Division 3"}
+                  className="mt-1"
+                />
+                <p className="text-xs text-muted-foreground mt-1">Supplier fills this when order is completed</p>
+              </div>
+              <div>
+                <Label>Urgency</Label>
+                <Select value={rankUrgency} onValueChange={(v) => setRankUrgency(v as "urgent" | "anytime" | "none")}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Select urgency" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">— None —</SelectItem>
+                    <SelectItem value="anytime">Anytime</SelectItem>
+                    <SelectItem value="urgent">Urgent (24hrs)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
+
+          {/* EA Backup Codes */}
+          <div className="space-y-2">
+            <p className="text-xs font-semibold text-muted-foreground">EA Backup Codes</p>
+            <div className="grid grid-cols-3 gap-2">
+              <div>
+                <Label className="text-xs">EA 1</Label>
+                <Input value={eaBackup1} onChange={(e) => setEaBackup1(e.target.value)} className="mt-1 font-mono" placeholder="—" />
+              </div>
+              <div>
+                <Label className="text-xs">EA 2</Label>
+                <Input value={eaBackup2} onChange={(e) => setEaBackup2(e.target.value)} className="mt-1 font-mono" placeholder="—" />
+              </div>
+              <div>
+                <Label className="text-xs">EA 3</Label>
+                <Input value={eaBackup3} onChange={(e) => setEaBackup3(e.target.value)} className="mt-1 font-mono" placeholder="—" />
+              </div>
+            </div>
+          </div>
+
+          {/* PlayStation Backup Codes (PS only) */}
+          {item.platform === "PS" && (
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-muted-foreground">PlayStation Backup Codes</p>
+              <div className="grid grid-cols-3 gap-2">
+                <div>
+                  <Label className="text-xs">PS 1</Label>
+                  <Input value={psBackup1} onChange={(e) => setPsBackup1(e.target.value)} className="mt-1 font-mono" placeholder="—" />
+                </div>
+                <div>
+                  <Label className="text-xs">PS 2</Label>
+                  <Input value={psBackup2} onChange={(e) => setPsBackup2(e.target.value)} className="mt-1 font-mono" placeholder="—" />
+                </div>
+                <div>
+                  <Label className="text-xs">PS 3</Label>
+                  <Input value={psBackup3} onChange={(e) => setPsBackup3(e.target.value)} className="mt-1 font-mono" placeholder="—" />
+                </div>
+              </div>
             </div>
           )}
 

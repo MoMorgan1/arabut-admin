@@ -111,9 +111,15 @@ export interface OrderItem {
   // EA Credentials
   ea_email: string | null;
   ea_password: string | null;
-  backup_code_1: string | null;
-  backup_code_2: string | null;
-  backup_code_3: string | null;
+  backup_code_1?: string | null; // legacy
+  backup_code_2?: string | null;
+  backup_code_3?: string | null;
+  ea_backup1: string | null;
+  ea_backup2: string | null;
+  ea_backup3: string | null;
+  ps_backup1: string | null;
+  ps_backup2: string | null;
+  ps_backup3: string | null;
   platform: Platform | null;
 
   // Coins specific
@@ -147,6 +153,8 @@ export interface OrderItem {
 
   // Service targets for pricing
   rank_target: number | null; // FUT Rank target (1-6)
+  rank_achieved: string | null; // Rank supplier actually achieved (filled by supplier)
+  rank_urgency: "urgent" | "anytime" | null; // Service urgency
   division_target: number | null; // Rivals division target (1-10)
   is_fast_service: boolean; // Whether this is fast/priority service
 

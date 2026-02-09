@@ -96,7 +96,6 @@ export default function OrdersPage() {
       let query = supabase
         .from("orders")
         .select("*, order_items(*)")
-        .order("order_date", { ascending: false })
         .limit(100);
 
       // Note: search filtering is done client-side below to avoid
