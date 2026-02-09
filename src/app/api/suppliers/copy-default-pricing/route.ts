@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function POST() {
+  // Use regular client to verify the user is authenticated + admin
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   
@@ -20,9 +22,12 @@ export async function POST() {
     return NextResponse.json({ error: "Admin only" }, { status: 403 });
   }
 
+  // Use admin client (service role) for bulk operations — bypasses RLS
+  const adminSupabase = createAdminClient();
+
   try {
     // Get all default pricing rules
-    const { data: defaultPrices, error: fetchErr } = await supabase
+    const { data: defaultPrices, error: fetchErr } = await adminSupabase
       .from("default_supplier_prices")
       .select("*")
       .eq("is_active", true);
@@ -36,7 +41,7 @@ export async function POST() {
     }
 
     // Get all active suppliers
-    const { data: suppliers, error: suppliersErr } = await supabase
+    const { data: suppliers, error: suppliersErr } = await adminSupabase
       .from("suppliers")
       .select("id")
       .eq("is_active", true);
@@ -50,7 +55,7 @@ export async function POST() {
     }
 
     // Delete existing pricing for all suppliers
-    const { error: deleteErr } = await supabase
+    const { error: deleteErr } = await adminSupabase
       .from("supplier_prices")
       .delete()
       .in("supplier_id", suppliers.map(s => s.id));
@@ -73,7 +78,7 @@ export async function POST() {
       }))
     );
 
-    const { error: insertErr } = await supabase
+    const { error: insertErr } = await adminSupabase
       .from("supplier_prices")
       .insert(newPrices);
 

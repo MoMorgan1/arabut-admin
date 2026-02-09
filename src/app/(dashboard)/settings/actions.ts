@@ -273,6 +273,96 @@ export async function updateUserRoleAction(
   return { success: true };
 }
 
+// =================== Delete User (Hard Delete) ===================
+
+export async function deleteUserAction(userId: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Unauthorized" };
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+  if (profile?.role !== "admin") return { error: "Only admins can delete users" };
+
+  // Prevent self-deletion
+  if (userId === user.id) {
+    return { error: "You cannot delete your own account" };
+  }
+
+  const { createAdminClient } = await import("@/lib/supabase/admin");
+  const adminSupabase = createAdminClient();
+
+  // Delete from auth.users — this cascades to profiles automatically
+  const { error } = await adminSupabase.auth.admin.deleteUser(userId);
+
+  if (error) {
+    console.error("Delete user error:", error);
+    return { error: `Failed to delete user: ${error.message}` };
+  }
+
+  revalidatePath("/settings");
+  return { success: true };
+}
+
+// =================== Reset User Password (Admin) ===================
+
+export async function resetUserPasswordAction(userId: string, newPassword: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Unauthorized" };
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+  if (profile?.role !== "admin") return { error: "Only admins can reset passwords" };
+
+  if (newPassword.length < 6) return { error: "Password must be at least 6 characters" };
+
+  const { createAdminClient } = await import("@/lib/supabase/admin");
+  const adminSupabase = createAdminClient();
+
+  const { error } = await adminSupabase.auth.admin.updateUserById(userId, {
+    password: newPassword,
+  });
+
+  if (error) {
+    console.error("Reset password error:", error);
+    return { error: `Failed to reset password: ${error.message}` };
+  }
+
+  return { success: true };
+}
+
+// =================== Change Own Password ===================
+
+export async function changeOwnPasswordAction(newPassword: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Unauthorized" };
+
+  if (newPassword.length < 6) return { error: "Password must be at least 6 characters" };
+
+  // Use admin client to update the user's password
+  const { createAdminClient } = await import("@/lib/supabase/admin");
+  const adminSupabase = createAdminClient();
+
+  const { error } = await adminSupabase.auth.admin.updateUserById(user.id, {
+    password: newPassword,
+  });
+
+  if (error) {
+    console.error("Change password error:", error);
+    return { error: `Failed to change password: ${error.message}` };
+  }
+
+  return { success: true };
+}
+
 // =================== Supplier Account ===================
 
 export async function createSupplierAccountAction(params: {

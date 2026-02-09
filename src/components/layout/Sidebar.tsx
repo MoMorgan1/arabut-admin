@@ -27,6 +27,7 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import { useUserRole } from "@/hooks/useUserRole";
+import ChangePasswordDialog from "@/components/layout/ChangePasswordDialog";
 
 const NAV_ITEMS = [
   { label: "Dashboard", href: "/", icon: LayoutDashboard },
@@ -145,30 +146,43 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
         {/* Bottom actions */}
         <div className="p-2 flex flex-col gap-1">
           {collapsed ? (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="w-full text-sidebar-foreground hover:text-destructive"
-                  onClick={handleLogout}
-                >
-                  <LogOut className="h-4.5 w-4.5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="right" sideOffset={8}>
-                Sign out
-              </TooltipContent>
-            </Tooltip>
+            <>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <ChangePasswordDialog collapsed />
+                </TooltipTrigger>
+                <TooltipContent side="right" sideOffset={8}>
+                  Change Password
+                </TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="w-full text-sidebar-foreground hover:text-destructive"
+                    onClick={handleLogout}
+                  >
+                    <LogOut className="h-4.5 w-4.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="right" sideOffset={8}>
+                  Sign out
+                </TooltipContent>
+              </Tooltip>
+            </>
           ) : (
-            <Button
-              variant="ghost"
-              className="w-full justify-start gap-3 text-sidebar-foreground hover:text-destructive px-3"
-              onClick={handleLogout}
-            >
-              <LogOut className="h-4.5 w-4.5" />
-              <span>Sign out</span>
-            </Button>
+            <>
+              <ChangePasswordDialog />
+              <Button
+                variant="ghost"
+                className="w-full justify-start gap-3 text-sidebar-foreground hover:text-destructive px-3"
+                onClick={handleLogout}
+              >
+                <LogOut className="h-4.5 w-4.5" />
+                <span>Sign out</span>
+              </Button>
+            </>
           )}
         </div>
 
