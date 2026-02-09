@@ -50,7 +50,7 @@ export default function InviteUserForm() {
           <UserPlus className="h-4 w-4" /> Add User
         </Button>
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Add New User</DialogTitle>
         </DialogHeader>

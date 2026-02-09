@@ -245,9 +245,9 @@ export default function OrderDetail({
       {/* Order header */}
       <Card>
         <CardHeader>
-          <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 flex-wrap">
                 <CardTitle className="text-xl">
                   Order #{order.salla_order_id}
                 </CardTitle>
@@ -271,7 +271,7 @@ export default function OrderDetail({
                 {formatDate(order.order_date)}
               </p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <StatusBadge status={order.status} />
               {allowAdminFields && <EditOrderDialog order={order} />}
               {isAdmin && (
@@ -279,10 +279,11 @@ export default function OrderDetail({
                   <DialogTrigger asChild>
                     <Button variant="outline" size="sm" className="gap-1.5 text-destructive border-destructive/50 hover:bg-destructive/10">
                       <Trash2 className="h-3.5 w-3.5" />
-                      Move to Trash
+                      <span className="hidden sm:inline">Move to Trash</span>
+                      <span className="sm:hidden">Trash</span>
                     </Button>
                   </DialogTrigger>
-                  <DialogContent>
+                  <DialogContent className="sm:max-w-md">
                     <DialogHeader>
                       <DialogTitle>Move order to trash?</DialogTitle>
                     </DialogHeader>
@@ -293,11 +294,11 @@ export default function OrderDetail({
                       <p className="text-sm font-medium text-amber-600 dark:text-amber-500">
                         This action affects the database: the order is marked as deleted and hidden from the list.
                       </p>
-                      <div className="flex justify-end gap-2 pt-2">
-                        <Button variant="outline" onClick={() => setTrashDialogOpen(false)} disabled={trashLoading}>
+                      <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-2">
+                        <Button variant="outline" onClick={() => setTrashDialogOpen(false)} disabled={trashLoading} className="w-full sm:w-auto">
                           Cancel
                         </Button>
-                        <Button variant="destructive" onClick={handleMoveToTrash} disabled={trashLoading} className="gap-2">
+                        <Button variant="destructive" onClick={handleMoveToTrash} disabled={trashLoading} className="gap-2 w-full sm:w-auto">
                           {trashLoading && <Loader2 className="h-4 w-4 animate-spin" />}
                           Move to Trash
                         </Button>
@@ -731,7 +732,7 @@ function OrderItemCard({
   return (
     <Card>
       <CardHeader className="pb-3">
-        <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="flex items-center gap-2 flex-wrap">
             <Badge variant="secondary">
               {ORDER_TYPE_LABELS[item.item_type] ?? item.item_type}
@@ -741,14 +742,14 @@ function OrderItemCard({
               <Badge variant="outline">{item.challenges_count} Challenges</Badge>
             )}
           </div>
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
             <StatusBadge status={item.status} />
             <Select
               value={item.status}
               onValueChange={handleStatusChange}
               disabled={updating}
             >
-              <SelectTrigger className="w-[170px] h-8 text-xs">
+              <SelectTrigger className="w-full sm:w-[170px] h-9 text-xs">
                 {updating ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 ) : (
@@ -769,7 +770,7 @@ function OrderItemCard({
                 onValueChange={handleSupplierChange}
                 disabled={assigningSupplier}
               >
-                <SelectTrigger className="w-[180px] h-8 text-xs">
+                <SelectTrigger className="w-full sm:w-[180px] h-9 text-xs">
                   {assigningSupplier ? (
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
                   ) : (
@@ -1062,7 +1063,7 @@ function EditOrderDialog({ order }: { order: Order }) {
           Edit
         </Button>
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Edit Order #{order.salla_order_id}</DialogTitle>
         </DialogHeader>
@@ -1242,11 +1243,11 @@ function EditOrderItemDialog({
           Edit Item
         </Button>
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Edit: {item.product_name}</DialogTitle>
         </DialogHeader>
-        <div className="space-y-4 pt-2">
+        <div className="space-y-4 pt-2 pb-2">
           {allowAdminFields && !isSBC && (
             <div className="grid grid-cols-2 gap-3">
               <div>

@@ -50,7 +50,7 @@ export default function PricingRuleForm() {
           <Plus className="h-4 w-4" /> Add Rule
         </Button>
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Add Pricing Rule</DialogTitle>
         </DialogHeader>

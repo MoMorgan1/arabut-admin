@@ -62,26 +62,26 @@ export default async function SettingsPage() {
       </div>
 
       <Tabs defaultValue="pricing" className="space-y-4">
-        <TabsList className="grid w-full max-w-2xl grid-cols-5">
-          <TabsTrigger value="pricing" className="gap-2">
-            <DollarSign className="h-4 w-4" />
-            Pricing
+        <TabsList className="grid w-full max-w-2xl grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-1">
+          <TabsTrigger value="pricing" className="gap-1 sm:gap-2">
+            <DollarSign className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            <span className="text-xs sm:text-sm">Pricing</span>
           </TabsTrigger>
-          <TabsTrigger value="users" className="gap-2">
-            <Users className="h-4 w-4" />
-            Users
+          <TabsTrigger value="users" className="gap-1 sm:gap-2">
+            <Users className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            <span className="text-xs sm:text-sm">Users</span>
           </TabsTrigger>
-          <TabsTrigger value="trash" className="gap-2">
-            <Trash2 className="h-4 w-4" />
-            Trash
+          <TabsTrigger value="trash" className="gap-1 sm:gap-2">
+            <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            <span className="text-xs sm:text-sm">Trash</span>
           </TabsTrigger>
-          <TabsTrigger value="migration" className="gap-2">
-            <Database className="h-4 w-4" />
-            Migration
+          <TabsTrigger value="migration" className="gap-1 sm:gap-2">
+            <Database className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            <span className="text-xs sm:text-sm">Migration</span>
           </TabsTrigger>
-          <TabsTrigger value="api" className="gap-2">
-            <Key className="h-4 w-4" />
-            API
+          <TabsTrigger value="api" className="gap-1 sm:gap-2">
+            <Key className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            <span className="text-xs sm:text-sm">API</span>
           </TabsTrigger>
         </TabsList>
 
@@ -100,7 +100,7 @@ export default async function SettingsPage() {
           </Card>
 
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
+            <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
               <div>
                 <CardTitle>Pricing Rules (Coins)</CardTitle>
                 <p className="text-sm text-muted-foreground mt-1">
@@ -113,40 +113,76 @@ export default async function SettingsPage() {
               {!pricingRules?.length ? (
                 <p className="text-sm text-muted-foreground">No rules yet. Click &ldquo;Add Rule&rdquo; to create one.</p>
               ) : (
-                <div className="rounded-lg border border-border overflow-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="bg-muted/40">
-                        <TableHead>Platform</TableHead>
-                        <TableHead>Shipping</TableHead>
-                        <TableHead>From (K)</TableHead>
-                        <TableHead>To (K)</TableHead>
-                        <TableHead>$/Million</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead className="w-[80px]"></TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {pricingRules.map((r) => (
-                        <TableRow key={r.id} className={!r.is_active ? "opacity-50" : ""}>
-                          <TableCell>{r.platform}</TableCell>
-                          <TableCell>{r.shipping_type === "fast" ? "Fast" : "Slow"}</TableCell>
-                          <TableCell>{r.min_amount_k}</TableCell>
-                          <TableCell>{r.max_amount_k ?? "∞"}</TableCell>
-                          <TableCell className="font-mono">${r.price_per_million_usd}</TableCell>
-                          <TableCell>
-                            <Badge variant={r.is_active ? "default" : "secondary"}>
-                              {r.is_active ? "Active" : "Disabled"}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <PricingRuleActions rule={r} />
-                          </TableCell>
+                <>
+                  {/* Desktop Table */}
+                  <div className="hidden md:block rounded-lg border border-border overflow-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-muted/40">
+                          <TableHead>Platform</TableHead>
+                          <TableHead>Shipping</TableHead>
+                          <TableHead>From (K)</TableHead>
+                          <TableHead>To (K)</TableHead>
+                          <TableHead>$/Million</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead className="w-[80px]"></TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
+                      </TableHeader>
+                      <TableBody>
+                        {pricingRules.map((r) => (
+                          <TableRow key={r.id} className={!r.is_active ? "opacity-50" : ""}>
+                            <TableCell>{r.platform}</TableCell>
+                            <TableCell>{r.shipping_type === "fast" ? "Fast" : "Slow"}</TableCell>
+                            <TableCell>{r.min_amount_k}</TableCell>
+                            <TableCell>{r.max_amount_k ?? "∞"}</TableCell>
+                            <TableCell className="font-mono">${r.price_per_million_usd}</TableCell>
+                            <TableCell>
+                              <Badge variant={r.is_active ? "default" : "secondary"}>
+                                {r.is_active ? "Active" : "Disabled"}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <PricingRuleActions rule={r} />
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+
+                  {/* Mobile Cards */}
+                  <div className="md:hidden space-y-3">
+                    {pricingRules.map((r) => (
+                      <div
+                        key={r.id}
+                        className={`rounded-lg border border-border bg-card p-4 ${!r.is_active ? "opacity-50" : ""}`}
+                      >
+                        <div className="flex items-start justify-between mb-3">
+                          <div>
+                            <p className="font-semibold text-base">{r.platform}</p>
+                            <p className="text-sm text-muted-foreground">{r.shipping_type === "fast" ? "Fast Shipping" : "Slow Shipping"}</p>
+                          </div>
+                          <Badge variant={r.is_active ? "default" : "secondary"}>
+                            {r.is_active ? "Active" : "Disabled"}
+                          </Badge>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3 mb-3">
+                          <div>
+                            <p className="text-xs text-muted-foreground">Range</p>
+                            <p className="text-sm font-medium">{r.min_amount_k}K - {r.max_amount_k ? `${r.max_amount_k}K` : "∞"}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-muted-foreground">Price/Million</p>
+                            <p className="text-sm font-mono font-semibold">${r.price_per_million_usd}</p>
+                          </div>
+                        </div>
+                        <div className="flex justify-end pt-2 border-t border-border">
+                          <PricingRuleActions rule={r} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
               )}
             </CardContent>
           </Card>
@@ -170,14 +206,14 @@ export default async function SettingsPage() {
         {/* =================== User Management =================== */}
         <TabsContent value="users" className="space-y-4">
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
+            <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
               <div>
                 <CardTitle>Users</CardTitle>
                 <p className="text-sm text-muted-foreground mt-1">
                   Create accounts, change roles, and manage user access
                 </p>
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
                 <LinkSupplierAccount suppliers={suppliers ?? []} />
                 <InviteUserForm />
               </div>
@@ -186,40 +222,72 @@ export default async function SettingsPage() {
               {!profiles?.length ? (
                 <p className="text-sm text-muted-foreground">No users found</p>
               ) : (
-                <div className="rounded-lg border border-border overflow-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="bg-muted/40">
-                        <TableHead>Name</TableHead>
-                        <TableHead>Role</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {profiles.map((p) => (
-                        <TableRow key={p.id}>
-                          <TableCell className="font-medium">{p.full_name}</TableCell>
-                          <TableCell>
-                            <Badge variant="secondary">
-                              {p.role === "admin" ? "Admin" : p.role === "employee" ? "Employee" : "Supplier"}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            {p.is_active ? (
-                              <span className="text-green-500 text-sm">Active</span>
-                            ) : (
-                              <span className="text-muted-foreground text-sm">Disabled</span>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            <UserActions userId={p.id} currentRole={p.role} isActive={p.is_active} />
-                          </TableCell>
+                <>
+                  {/* Desktop Table */}
+                  <div className="hidden md:block rounded-lg border border-border overflow-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-muted/40">
+                          <TableHead>Name</TableHead>
+                          <TableHead>Role</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Actions</TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
+                      </TableHeader>
+                      <TableBody>
+                        {profiles.map((p) => (
+                          <TableRow key={p.id}>
+                            <TableCell className="font-medium">{p.full_name}</TableCell>
+                            <TableCell>
+                              <Badge variant="secondary">
+                                {p.role === "admin" ? "Admin" : p.role === "employee" ? "Employee" : "Supplier"}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              {p.is_active ? (
+                                <span className="text-green-500 text-sm">Active</span>
+                              ) : (
+                                <span className="text-muted-foreground text-sm">Disabled</span>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              <UserActions userId={p.id} currentRole={p.role} isActive={p.is_active} />
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+
+                  {/* Mobile Cards */}
+                  <div className="md:hidden space-y-3">
+                    {profiles.map((p) => (
+                      <div
+                        key={p.id}
+                        className="rounded-lg border border-border bg-card p-4"
+                      >
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex-1">
+                            <p className="font-semibold text-base">{p.full_name}</p>
+                            <div className="flex items-center gap-2 mt-1">
+                              <Badge variant="secondary" className="text-xs">
+                                {p.role === "admin" ? "Admin" : p.role === "employee" ? "Employee" : "Supplier"}
+                              </Badge>
+                              {p.is_active ? (
+                                <span className="text-green-500 text-xs">Active</span>
+                              ) : (
+                                <span className="text-muted-foreground text-xs">Disabled</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex justify-end pt-2 border-t border-border">
+                          <UserActions userId={p.id} currentRole={p.role} isActive={p.is_active} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
               )}
             </CardContent>
           </Card>
