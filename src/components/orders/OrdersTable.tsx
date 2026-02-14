@@ -202,6 +202,9 @@ export default function OrdersTable({
               // Show all unique item statuses
               const uniqueStatuses = [...new Set(order.order_items.map((i) => i.status))];
 
+              // Check if any items are missing actual cost
+              const hasMissingCost = order.order_items.some((i) => i.actual_cost == null || i.actual_cost === 0);
+
               return (
                 <TableRow
                   key={order.id}
@@ -217,7 +220,14 @@ export default function OrdersTable({
                     </TableCell>
                   )}
                   <TableCell className="font-mono text-sm">
-                    #{order.salla_order_id}
+                    <div className="flex items-center gap-1.5">
+                      #{order.salla_order_id}
+                      {hasMissingCost && (
+                        <Badge variant="outline" className="text-xs text-amber-600 border-amber-600/30 bg-amber-50 dark:bg-amber-950/30" title="Missing cost information">
+                          No Cost
+                        </Badge>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell>
                     <div>
@@ -324,6 +334,9 @@ export default function OrdersTable({
           // Show all unique item statuses
           const uniqueStatuses = [...new Set(order.order_items.map((i) => i.status))];
 
+          // Check if any items are missing actual cost
+          const hasMissingCost = order.order_items.some((i) => i.actual_cost == null || i.actual_cost === 0);
+
           return (
             <div
               key={order.id}
@@ -332,7 +345,7 @@ export default function OrdersTable({
             >
               {/* Header - Order # and Checkbox */}
               <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 flex-wrap">
                   {allowSelection && (
                     <div onClick={(e) => e.stopPropagation()}>
                       <Checkbox
@@ -342,6 +355,11 @@ export default function OrdersTable({
                     </div>
                   )}
                   <span className="font-mono text-sm font-semibold">#{order.salla_order_id}</span>
+                  {hasMissingCost && (
+                    <Badge variant="outline" className="text-xs text-amber-600 border-amber-600/30 bg-amber-50 dark:bg-amber-950/30">
+                      No Cost
+                    </Badge>
+                  )}
                 </div>
                 <span className="text-xs text-muted-foreground">{formatDate(order.order_date)}</span>
               </div>

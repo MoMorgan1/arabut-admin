@@ -3,15 +3,34 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { createClient } from "@/lib/supabase/client";
 import OrdersTable, { type OrderRowData } from "@/components/orders/OrdersTable";
+import OrdersTableSkeleton from "@/components/orders/OrdersTableSkeleton";
 import OrderFilters from "@/components/orders/OrderFilters";
 import BulkStatusAction from "@/components/orders/BulkStatusAction";
 import { DEFAULT_FILTERS, TERMINAL_STATUSES, type OrderFilters as OrderFiltersType } from "@/types/orders";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { RefreshCw, ClipboardList, Radio } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { RefreshCw, ClipboardList, Radio, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Package } from "lucide-react";
 import { toast } from "sonner";
 
-const POLL_INTERVAL_MS = 5000; // 5 seconds
+const POLL_INTERVAL_MS = 5000;
+const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
+const DEFAULT_PAGE_SIZE = 25;
+const STORAGE_KEY_PAGE_SIZE = "arabut-orders-page-size";
+const ORDER_FETCH_LIMIT = 2000; // Cap for fast initial load; pagination is client-side
+
+function getStoredPageSize(): number {
+  if (typeof window === "undefined") return DEFAULT_PAGE_SIZE;
+  const stored = localStorage.getItem(STORAGE_KEY_PAGE_SIZE);
+  const n = stored ? parseInt(stored, 10) : NaN;
+  return PAGE_SIZE_OPTIONS.includes(n) ? n : DEFAULT_PAGE_SIZE;
+}
 
 export default function OrdersPage() {
   const [orders, setOrders] = useState<OrderRowData[]>([]);
@@ -21,6 +40,21 @@ export default function OrdersPage() {
   const [bulkActionOpen, setBulkActionOpen] = useState(false);
   const [roleError, setRoleError] = useState<string | null>(null);
   const [role, setRole] = useState<"admin" | "employee" | "supplier" | null>(null);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+
+  // Restore page size from localStorage after mount
+  useEffect(() => {
+    setPageSize(getStoredPageSize());
+  }, []);
+
+  const setPageSizeAndStore = useCallback((size: number) => {
+    setPageSize(size);
+    setPage(1);
+    if (typeof window !== "undefined") {
+      localStorage.setItem(STORAGE_KEY_PAGE_SIZE, String(size));
+    }
+  }, []);
 
   // Stable supabase client (singleton)
   const supabase = useMemo(() => createClient(), []);
@@ -28,6 +62,25 @@ export default function OrdersPage() {
   // Keep a ref to the latest filters so polling always reads current values
   const filtersRef = useRef(filters);
   filtersRef.current = filters;
+
+  // Pagination: slice orders for current page
+  const totalOrders = orders.length;
+  const totalPages = Math.max(1, Math.ceil(totalOrders / pageSize));
+  const safePage = Math.min(page, totalPages) || 1;
+  const paginatedOrders = useMemo(() => {
+    const start = (safePage - 1) * pageSize;
+    return orders.slice(start, start + pageSize);
+  }, [orders, safePage, pageSize]);
+
+  // Keep page in bounds when orders or pageSize change
+  useEffect(() => {
+    if (page > totalPages && totalPages > 0) setPage(totalPages);
+  }, [totalPages, page]);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setPage(1);
+  }, [filters]);
 
   function handleSelectionChange(id: string, checked: boolean) {
     if (role === "supplier") return;
@@ -41,8 +94,21 @@ export default function OrdersPage() {
 
   function handleSelectAll(checked: boolean) {
     if (role === "supplier") return;
-    if (checked) setSelectedOrderIds(new Set(orders.map((o) => o.id)));
-    else setSelectedOrderIds(new Set());
+    // Select/deselect only orders on the current page
+    const pageOrderIds = paginatedOrders.map((o) => o.id);
+    if (checked) {
+      setSelectedOrderIds((prev) => {
+        const next = new Set(prev);
+        pageOrderIds.forEach((id) => next.add(id));
+        return next;
+      });
+    } else {
+      setSelectedOrderIds((prev) => {
+        const next = new Set(prev);
+        pageOrderIds.forEach((id) => next.delete(id));
+        return next;
+      });
+    }
   }
 
   // Core fetch logic — reads filters from ref (never stale)
@@ -96,7 +162,8 @@ export default function OrdersPage() {
       let query = supabase
         .from("orders")
         .select("*, order_items(*)")
-        .limit(100);
+        .order("order_date", { ascending: false })
+        .limit(ORDER_FETCH_LIMIT);
 
       // Note: search filtering is done client-side below to avoid
       // bigint type errors with salla_order_id and to also search ea_email
@@ -280,8 +347,12 @@ export default function OrdersPage() {
 
       {/* Results count + bulk actions */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
-        <span className="text-sm text-muted-foreground">
-          {loading ? "Loading..." : `${orders.length} orders`}
+        <span className="text-sm text-muted-foreground tabular-nums">
+          {loading
+            ? "Loading orders…"
+            : totalOrders === 0
+              ? "No orders match your filters"
+              : `${(safePage - 1) * pageSize + 1}–${Math.min(safePage * pageSize, totalOrders)} of ${totalOrders}`}
         </span>
         {allowSelection && selectedOrderIds.size > 0 && (
           <div className="flex items-center gap-2">
@@ -322,22 +393,108 @@ export default function OrdersPage() {
 
       {/* Table */}
       {loading ? (
+        <OrdersTableSkeleton />
+      ) : totalOrders === 0 ? (
         <Card>
           <CardContent className="py-16">
-            <div className="flex items-center justify-center gap-3">
-              <RefreshCw className="h-5 w-5 animate-spin text-muted-foreground" />
-              <span className="text-muted-foreground">Loading orders...</span>
+            <div className="flex flex-col items-center justify-center gap-3 text-center">
+              <div className="rounded-full bg-muted p-4">
+                <Package className="h-8 w-8 text-muted-foreground" />
+              </div>
+              <div className="space-y-1">
+                <p className="font-medium">No orders found</p>
+                <p className="text-sm text-muted-foreground max-w-sm">
+                  Try adjusting your filters or date range, or refresh to load the latest data.
+                </p>
+              </div>
+              <Button variant="outline" size="sm" onClick={fetchOrders} className="gap-2">
+                <RefreshCw className="h-4 w-4" />
+                Refresh
+              </Button>
             </div>
           </CardContent>
         </Card>
       ) : (
-        <OrdersTable
-          orders={orders}
-          selectedOrderIds={selectedOrderIds}
-          onSelectionChange={handleSelectionChange}
-          onSelectAll={handleSelectAll}
-          allowSelection={allowSelection}
-        />
+        <>
+          <OrdersTable
+            orders={paginatedOrders}
+            selectedOrderIds={selectedOrderIds}
+            onSelectionChange={handleSelectionChange}
+            onSelectAll={handleSelectAll}
+            allowSelection={allowSelection}
+          />
+
+          {/* Pagination */}
+          {totalOrders > pageSize && (
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-border">
+              <div className="flex items-center gap-2 order-2 sm:order-1">
+                <span className="text-sm text-muted-foreground whitespace-nowrap">Rows per page</span>
+                <Select
+                  value={String(pageSize)}
+                  onValueChange={(v) => setPageSizeAndStore(Number(v))}
+                >
+                  <SelectTrigger className="w-[72px] h-8">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PAGE_SIZE_OPTIONS.map((n) => (
+                      <SelectItem key={n} value={String(n)}>
+                        {n}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center gap-3 order-1 sm:order-2">
+                <span className="text-sm text-muted-foreground tabular-nums">
+                  Page {safePage} of {totalPages}
+                </span>
+                <div className="flex items-center gap-0.5">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => setPage(1)}
+                    disabled={safePage <= 1}
+                    title="First page"
+                  >
+                    <ChevronsLeft className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    disabled={safePage <= 1}
+                    title="Previous"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={safePage >= totalPages}
+                    title="Next"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => setPage(totalPages)}
+                    disabled={safePage >= totalPages}
+                    title="Last page"
+                  >
+                    <ChevronsRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       {allowSelection && bulkActionOpen && selectedOrderIds.size > 0 && (

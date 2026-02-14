@@ -1,58 +1,69 @@
 -- =============================================================
--- Fix Profiles RLS for User Sync
+-- Fix Profiles RLS for User Sync (IDEMPOTENT - safe to re-run)
 -- =============================================================
 -- Issue: When creating users via admin panel, the trigger function
 -- handle_new_user() needs to insert into profiles table.
--- Even though it's SECURITY DEFINER, RLS still applies.
--- This migration adds a policy to allow the service role to bypass RLS.
+-- This migration ensures all necessary RLS policies exist.
 -- =============================================================
 
--- Add policy for service role (used by admin client and triggers)
-CREATE POLICY "service_role_all_profiles" ON profiles
-  FOR ALL
-  USING (
-    -- Service role can access all profiles
-    current_setting('request.jwt.claims', true)::json->>'role' = 'service_role'
-    OR
-    -- Also allow users to read their own profile
-    auth.uid() = id
-  )
-  WITH CHECK (
-    -- Service role can modify all profiles
-    current_setting('request.jwt.claims', true)::json->>'role' = 'service_role'
-    OR
-    -- Users can update their own profile
-    auth.uid() = id
-  );
+-- 1. Ensure get_user_role() helper exists (SECURITY DEFINER bypasses RLS)
+CREATE OR REPLACE FUNCTION get_user_role()
+RETURNS TEXT AS $$
+  SELECT role FROM public.profiles WHERE id = auth.uid();
+$$ LANGUAGE sql SECURITY DEFINER STABLE;
 
--- Ensure admins can read all profiles (already covered by existing policies, but ensure it's clear)
-CREATE POLICY "admin_read_all_profiles" ON profiles
+-- 2. Drop only our custom policies (safe re-run)
+DROP POLICY IF EXISTS "service_role_all_profiles" ON profiles;
+DROP POLICY IF EXISTS "admin_read_all_profiles" ON profiles;
+DROP POLICY IF EXISTS "admin_write_profiles" ON profiles;
+DROP POLICY IF EXISTS "admin_update_profiles" ON profiles;
+
+-- 3. Ensure the ORIGINAL schema policies exist on profiles
+--    (re-create them if they were dropped)
+DROP POLICY IF EXISTS "admin_employee_read_all" ON profiles;
+CREATE POLICY "admin_employee_read_all" ON profiles
+  FOR SELECT
+  USING (get_user_role() IN ('admin', 'employee'));
+
+DROP POLICY IF EXISTS "admin_write_all" ON profiles;
+CREATE POLICY "admin_write_all" ON profiles
+  FOR ALL
+  USING (get_user_role() = 'admin');
+
+-- 4. Allow users to always read their own profile
+--    (needed for role checks before other policies kick in)
+DROP POLICY IF EXISTS "users_read_own_profile" ON profiles;
+CREATE POLICY "users_read_own_profile" ON profiles
+  FOR SELECT
+  USING (auth.uid() = id);
+
+-- 5. Supplier: read own profile
+DROP POLICY IF EXISTS "supplier_read_own" ON profiles;
+CREATE POLICY "supplier_read_own" ON profiles
   FOR SELECT
   USING (
-    EXISTS (
-      SELECT 1 FROM profiles p
-      WHERE p.id = auth.uid()
-      AND p.role = 'admin'
-    )
+    id = auth.uid()
+    AND role = 'supplier'
   );
 
--- Allow admins to insert/update profiles
-CREATE POLICY "admin_write_profiles" ON profiles
-  FOR INSERT
-  WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM profiles p
-      WHERE p.id = auth.uid()
-      AND p.role = 'admin'
-    )
-  );
+-- 6. Ensure handle_new_user trigger includes email column
+--    (your DB has an email NOT NULL constraint on profiles)
+CREATE OR REPLACE FUNCTION handle_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO public.profiles (id, email, full_name, role)
+  VALUES (
+    NEW.id,
+    COALESCE(NEW.email, ''),
+    COALESCE(NEW.raw_user_meta_data->>'full_name', NEW.email),
+    COALESCE(NEW.raw_user_meta_data->>'role', 'employee')
+  )
+  ON CONFLICT (id) DO NOTHING;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
-CREATE POLICY "admin_update_profiles" ON profiles
-  FOR UPDATE
-  USING (
-    EXISTS (
-      SELECT 1 FROM profiles p
-      WHERE p.id = auth.uid()
-      AND p.role = 'admin'
-    )
-  );
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION handle_new_user();

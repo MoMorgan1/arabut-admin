@@ -14,6 +14,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Use admin client for settlement operations to bypass RLS
+    const { createAdminClient } = await import("@/lib/supabase/admin");
+    const adminSupabase = createAdminClient();
+
     const formData = await request.formData();
     const file = formData.get("file") as File | null;
 
@@ -51,33 +55,46 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create settlement record
+    // Create settlement record using admin client
     const fileName = file.name;
     const totalAmount = rows.reduce((sum, r) => sum + r.settled_amount, 0);
 
-    const { data: settlement, error: settlementError } = await supabase
+    // Check if user has a profile (for uploaded_by field)
+    const { data: profile } = await adminSupabase
+      .from("profiles")
+      .select("id")
+      .eq("id", user.id)
+      .single();
+
+    const { data: settlement, error: settlementError } = await adminSupabase
       .from("revenue_settlements")
       .insert({
         file_name: fileName,
+        settlement_date: new Date().toISOString(), // Add settlement_date
         total_amount: totalAmount,
         matched_count: 0,
         unmatched_count: rows.length,
-        uploaded_by: user?.id ?? null,
+        uploaded_by: profile?.id ?? null, // Only set if profile exists
       })
       .select("id")
       .single();
 
     if (settlementError || !settlement) {
       console.error("Settlement insert error:", settlementError);
+      console.error("Error details:", JSON.stringify(settlementError, null, 2));
       return NextResponse.json(
-        { error: "Failed to create settlement record" },
+        { 
+          error: "Failed to create settlement record",
+          details: settlementError?.message || "Unknown error",
+          code: settlementError?.code || "N/A"
+        },
         { status: 500 }
       );
     }
 
     // Get all orders by salla_order_id for matching
     const orderIds = [...new Set(rows.map((r) => r.salla_order_id))];
-    const { data: orders } = await supabase
+    const { data: orders } = await adminSupabase
       .from("orders")
       .select("id, salla_order_id")
       .in("salla_order_id", orderIds);
@@ -92,7 +109,7 @@ export async function POST(request: NextRequest) {
       const orderId = orderBySallaId.get(row.salla_order_id) ?? null;
       const isMatched = !!orderId;
 
-      await supabase.from("settlement_items").insert({
+      await adminSupabase.from("settlement_items").insert({
         settlement_id: settlement.id,
         salla_order_id: row.salla_order_id,
         settled_amount: row.settled_amount,
@@ -101,7 +118,7 @@ export async function POST(request: NextRequest) {
       });
 
       if (isMatched && orderId) {
-        await supabase
+        await adminSupabase
           .from("orders")
           .update({
             settled_amount: row.settled_amount,
@@ -112,7 +129,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    await supabase
+    await adminSupabase
       .from("revenue_settlements")
       .update({
         matched_count: matchedCount,
