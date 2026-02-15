@@ -1,8 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import StatsCards from "@/components/dashboard/StatsCards";
-import RevenueChart from "@/components/dashboard/RevenueChart";
-import OrderTypesPie from "@/components/dashboard/OrderTypesPie";
+import DashboardCharts from "@/components/dashboard/DashboardCharts";
 
 function getMonthBounds() {
   const now = new Date();
@@ -191,24 +190,7 @@ export default async function DashboardPage() {
         ordersPending={pending}
       />
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Settled Revenue — Last 7 Days</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <RevenueChart data={last7} />
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Orders by Type</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <OrderTypesPie data={orderTypesData} />
-          </CardContent>
-        </Card>
-      </div>
+      <DashboardCharts revenueData={last7} orderTypesData={orderTypesData} />
     </div>
   );
 }

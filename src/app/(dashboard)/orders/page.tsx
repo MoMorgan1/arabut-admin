@@ -1,11 +1,10 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo, lazy, Suspense } from "react";
 import { createClient } from "@/lib/supabase/client";
 import OrdersTable, { type OrderRowData } from "@/components/orders/OrdersTable";
 import OrdersTableSkeleton from "@/components/orders/OrdersTableSkeleton";
 import OrderFilters from "@/components/orders/OrderFilters";
-import BulkStatusAction from "@/components/orders/BulkStatusAction";
 import { DEFAULT_FILTERS, TERMINAL_STATUSES, type OrderFilters as OrderFiltersType } from "@/types/orders";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,11 +18,13 @@ import {
 import { RefreshCw, ClipboardList, Radio, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Package } from "lucide-react";
 import { toast } from "sonner";
 
+// Dynamic imports for better code splitting
+const BulkStatusAction = lazy(() => import("@/components/orders/BulkStatusAction"));
+
 const POLL_INTERVAL_MS = 5000;
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 const DEFAULT_PAGE_SIZE = 25;
 const STORAGE_KEY_PAGE_SIZE = "arabut-orders-page-size";
-const ORDER_FETCH_LIMIT = 2000; // Cap for fast initial load; pagination is client-side
 
 function getStoredPageSize(): number {
   if (typeof window === "undefined") return DEFAULT_PAGE_SIZE;
@@ -42,6 +43,8 @@ export default function OrdersPage() {
   const [role, setRole] = useState<"admin" | "employee" | "supplier" | null>(null);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+  const [totalOrders, setTotalOrders] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
 
   // Restore page size from localStorage after mount
   useEffect(() => {
@@ -63,16 +66,10 @@ export default function OrdersPage() {
   const filtersRef = useRef(filters);
   filtersRef.current = filters;
 
-  // Pagination: slice orders for current page
-  const totalOrders = orders.length;
-  const totalPages = Math.max(1, Math.ceil(totalOrders / pageSize));
+  // Server-side pagination - no client-side slicing needed
   const safePage = Math.min(page, totalPages) || 1;
-  const paginatedOrders = useMemo(() => {
-    const start = (safePage - 1) * pageSize;
-    return orders.slice(start, start + pageSize);
-  }, [orders, safePage, pageSize]);
 
-  // Keep page in bounds when orders or pageSize change
+  // Keep page in bounds when totalPages changes
   useEffect(() => {
     if (page > totalPages && totalPages > 0) setPage(totalPages);
   }, [totalPages, page]);
@@ -95,7 +92,7 @@ export default function OrdersPage() {
   function handleSelectAll(checked: boolean) {
     if (role === "supplier") return;
     // Select/deselect only orders on the current page
-    const pageOrderIds = paginatedOrders.map((o) => o.id);
+    const pageOrderIds = orders.map((o) => o.id);
     if (checked) {
       setSelectedOrderIds((prev) => {
         const next = new Set(prev);
@@ -111,7 +108,7 @@ export default function OrdersPage() {
     }
   }
 
-  // Core fetch logic — reads filters from ref (never stale)
+  // Core fetch logic — reads filters from ref (never stale) and uses server-side API
   const fetchOrdersCore = useCallback(async (showLoading: boolean) => {
     const currentFilters = filtersRef.current;
 
@@ -121,109 +118,63 @@ export default function OrdersPage() {
     }
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        setRoleError("Not signed in. Please log in first.");
-        setOrders([]);
-        if (showLoading) setLoading(false);
-        return;
-      }
+      // Build query params for API
+      const params = new URLSearchParams({
+        page: String(page),
+        pageSize: String(pageSize),
+        status: currentFilters.status,
+        itemType: currentFilters.itemType,
+      });
 
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", user.id)
-        .single();
+      if (currentFilters.search) params.set("search", currentFilters.search);
+      if (currentFilters.dateFrom) params.set("dateFrom", currentFilters.dateFrom);
+      if (currentFilters.dateTo) params.set("dateTo", currentFilters.dateTo);
 
-      if (!profile) {
-        setRoleError(
-          "Your account is not linked to a profile in the database. " +
-          "Make sure you ran supabase-schema.sql in the SQL Editor, " +
-          "or run:\n" +
-          `INSERT INTO profiles (id, full_name, role) VALUES ('${user.id}', '${user.email}', 'admin');`
-        );
-        setOrders([]);
-        if (showLoading) setLoading(false);
-        return;
-      }
+      const response = await fetch(`/api/orders?${params.toString()}`);
 
-      setRole(profile.role);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
 
-      if (!["admin", "employee", "supplier"].includes(profile.role)) {
-        setRoleError(
-          `Your account role is "${profile.role}" — needs to be admin or employee to view orders. ` +
-          `Run in SQL Editor:\nUPDATE profiles SET role = 'admin' WHERE id = '${user.id}';`
-        );
-        setOrders([]);
-        if (showLoading) setLoading(false);
-        return;
-      }
+        if (response.status === 401) {
+          setRoleError("Not signed in. Please log in first.");
+          setOrders([]);
+          setTotalOrders(0);
+          setTotalPages(1);
+          if (showLoading) setLoading(false);
+          return;
+        }
 
-      let query = supabase
-        .from("orders")
-        .select("*, order_items(*)")
-        .order("order_date", { ascending: false })
-        .limit(ORDER_FETCH_LIMIT);
-
-      // Note: search filtering is done client-side below to avoid
-      // bigint type errors with salla_order_id and to also search ea_email
-
-      if (currentFilters.dateFrom) {
-        query = query.gte("order_date", currentFilters.dateFrom);
-      }
-      if (currentFilters.dateTo) {
-        query = query.lte("order_date", `${currentFilters.dateTo}T23:59:59`);
-      }
-
-      const { data, error } = await query;
-
-      if (error) {
-        console.error("Error fetching orders:", error);
-        if (showLoading) toast.error("Error fetching orders: " + error.message);
-        return;
-      }
-
-      let filteredOrders = (data as OrderRowData[]) ?? [];
-
-      // Client-side search: match customer_name, salla_order_id, and ea_email
-      if (currentFilters.search) {
-        const q = currentFilters.search.toLowerCase();
-        filteredOrders = filteredOrders.filter((order) => {
-          const nameMatch = order.customer_name?.toLowerCase().includes(q);
-          const orderIdMatch = order.salla_order_id?.toString().includes(q);
-          const emailMatch = order.order_items?.some(
-            (item) => item.ea_email?.toLowerCase().includes(q)
+        if (response.status === 403) {
+          setRoleError(
+            errorData.error || "Your account doesn't have permission to view orders."
           );
-          return nameMatch || orderIdMatch || emailMatch;
-        });
+          setOrders([]);
+          setTotalOrders(0);
+          setTotalPages(1);
+          if (showLoading) setLoading(false);
+          return;
+        }
+
+        throw new Error(errorData.error || "Failed to fetch orders");
       }
 
-      if (currentFilters.status === "active") {
-        filteredOrders = filteredOrders.filter((order) => {
-          const items = order.order_items ?? [];
-          if (items.length === 0) return true;
-          return !items.every((item) => TERMINAL_STATUSES.includes(item.status));
-        });
-      } else if (currentFilters.status !== "all") {
-        filteredOrders = filteredOrders.filter((order) =>
-          order.order_items?.some((item) => item.status === currentFilters.status)
-        );
-      }
+      const data = await response.json();
 
-      if (currentFilters.itemType !== "all") {
-        filteredOrders = filteredOrders.filter((order) =>
-          order.order_items?.some((item) => item.item_type === currentFilters.itemType)
-        );
-      }
-
-      setOrders(filteredOrders);
+      setOrders(data.orders || []);
+      setTotalOrders(data.pagination.total);
+      setTotalPages(data.pagination.totalPages);
+      setRole(data.role);
+      setRoleError(null);
     } catch (err) {
       console.error("Unexpected error:", err);
       if (showLoading) toast.error("An unexpected error occurred");
+      setOrders([]);
+      setTotalOrders(0);
+      setTotalPages(1);
     } finally {
       if (showLoading) setLoading(false);
     }
-  }, [supabase]); // Stable — no filters dependency, reads from ref
+  }, [page, pageSize]); // Depends on page and pageSize for API call
 
   // Full refresh with loading spinner (initial load + manual Refresh button)
   const fetchOrders = useCallback(() => fetchOrdersCore(true), [fetchOrdersCore]);
@@ -417,7 +368,7 @@ export default function OrdersPage() {
       ) : (
         <>
           <OrdersTable
-            orders={paginatedOrders}
+            orders={orders}
             selectedOrderIds={selectedOrderIds}
             onSelectionChange={handleSelectionChange}
             onSelectAll={handleSelectAll}
@@ -498,13 +449,15 @@ export default function OrdersPage() {
       )}
 
       {allowSelection && bulkActionOpen && selectedOrderIds.size > 0 && (
-        <BulkStatusAction
-          orderIds={[...selectedOrderIds]}
-          onClose={() => {
-            setBulkActionOpen(false);
-            setSelectedOrderIds(new Set());
-          }}
-        />
+        <Suspense fallback={<div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>}>
+          <BulkStatusAction
+            orderIds={[...selectedOrderIds]}
+            onClose={() => {
+              setBulkActionOpen(false);
+              setSelectedOrderIds(new Set());
+            }}
+          />
+        </Suspense>
       )}
     </div>
   );
